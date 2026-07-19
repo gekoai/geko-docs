@@ -1,4 +1,7 @@
-# TypeScript / JavaScript SDK
+---
+title: "TypeScript / JavaScript SDK"
+description: "@gekoai/sdk — a thin, typed, zero-dependency client for the Geko API."
+---
 
 `@gekoai/sdk` is a thin, typed client for the Geko API. Zero runtime dependencies (built on the global `fetch`), dual ESM + CommonJS, bundled type declarations. Runs on Node 20+, Deno, Bun, and browsers (via a [server-side proxy](/guides/frameworks)).
 
@@ -29,7 +32,7 @@ The client is **namespaced by service**. Text-to-speech lives under `geko.tts`; 
 | `fetch` | `typeof fetch` | global `fetch` | Inject a custom fetch (proxy, instrumentation, test double). |
 | `timeout` | `number` (ms) | `120000` | Per-request. `0` disables. Generous because of cold starts. |
 | `maxRetries` | `number` | `2` | Retries on transient failures. `0` disables. |
-| `headers` | `Record<string,string>` | `{}` | Extra headers on every request. |
+| `headers` | `Record<string, string>` | `{}` | Extra headers on every request. |
 
 ## `geko.tts.create(params)`
 
@@ -47,7 +50,7 @@ const audio = await geko.tts.create({
 | --- | --- | --- | --- |
 | `text` | `string` | — (required) | Text to synthesize (up to ~5000 chars). |
 | `model` | `string` | `tokay-kk-v1` | Model id. |
-| `voice` | `string` | model default (`Aigerim`) | Name from [`voices()`](#geko-tts-voices-model-options). |
+| `voice` | `string` | model default (`Aigerim`) | Name from `geko.tts.voices()`. |
 | `speed` | `number` | `1.0` | Speed multiplier (0.5–2). |
 | `nfe` | `number` | `32` | Diffusion steps: `16` fast, `32` quality. See [latency](/guides/latency). |
 | `normalize` | `boolean` | `true` | Expand numbers/currency/dates → spoken form. See [normalization](/guides/normalization). |
@@ -82,18 +85,32 @@ Service probe. Returns `{ status, models: string[] }`.
 const { status, models } = await geko.health(); // { status: "ok", models: ["tokay-kk-v1"] }
 ```
 
-`options` on the read methods accepts `{ signal?, timeout? }`.
+The read methods accept an `options` object of `{ signal?, timeout? }`.
 
 ## Types
 
 ```ts
 import type { Voice, Model, TtsParams, GekoOptions } from "@gekoai/sdk";
 
-interface Voice { name: string; gender?: string | null; style?: string | null; best_for?: string | null }
-interface Model { name: string; lang?: string | null; sample_rate?: number | null; voices?: string[]; default_voice?: string | null }
+interface Voice {
+  name: string;
+  gender?: string | null;
+  style?: string | null;
+  best_for?: string | null;
+}
+
+interface Model {
+  name: string;
+  lang?: string | null;
+  sample_rate?: number | null;
+  voices?: string[];
+  default_voice?: string | null;
+}
 ```
 
-> Response types describe the server contract; like most thin SDKs, JSON bodies are not re-validated at runtime.
+<Note>
+  Response types describe the server contract; like most thin SDKs, JSON bodies are not re-validated at runtime.
+</Note>
 
 ## Timeouts, cancellation & retries
 
@@ -108,4 +125,4 @@ const geko = new Geko({
 });
 ```
 
-Useful for proxies, logging, or tests. The SDK never binds your fetch to the wrong `this`.
+Useful for proxies, logging, or tests. The SDK always calls fetch as a free function, so undici's global keeps its binding and your custom fetch keeps its own.

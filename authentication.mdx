@@ -1,4 +1,7 @@
-# Authentication
+---
+title: "Authentication"
+description: "Creating and using API keys, and keeping them safe."
+---
 
 ## API keys
 
@@ -14,16 +17,13 @@ The catalog endpoints — `/v1/models`, `/v1/voices`, `/health` — are **open**
 
 ## With the SDK
 
-Pass the key explicitly, or let the SDK read it from the environment:
+Pass the key explicitly, or let the SDK read it from the environment (`GEKO_API_KEY`, falling back to `TOKAY_API_KEY`):
 
 ```ts
 import { Geko } from "@gekoai/sdk";
 
-// explicit
-const geko = new Geko({ apiKey: "sk-tokay-..." });
-
-// or from GEKO_API_KEY (falls back to TOKAY_API_KEY)
-const geko2 = new Geko();
+const geko = new Geko({ apiKey: "sk-tokay-..." }); // explicit
+const geko2 = new Geko();                          // from GEKO_API_KEY
 ```
 
 ```bash
@@ -32,11 +32,13 @@ export GEKO_API_KEY=sk-tokay-...
 
 ## Keep keys server-side
 
-Your key grants billable usage. **Never ship it to a browser or mobile app.**
+<Warning>
+  Your API key grants billable usage. **Never ship it to a browser or mobile app.** Anything in client-side code is public.
+</Warning>
 
-- ✅ Call Geko from your backend (API route, server, worker, function).
-- ✅ Expose your *own* thin endpoint to your frontend; keep the Geko key on the server.
-- ❌ Don't put the key in client-side JS, a public repo, or a mobile bundle.
+- Call Geko from your backend (API route, server, worker, function).
+- Expose your *own* thin endpoint to your frontend; keep the Geko key on the server.
+- Don't put the key in client-side JS, a public repo, or a mobile bundle.
 
 The API also does not currently send CORS headers, so direct cross-origin browser calls are blocked anyway — another reason to proxy through your server. See [Use it in your app](/guides/frameworks) for a Next.js route example. (Browser CORS is on the [roadmap](/roadmap).)
 
@@ -46,4 +48,4 @@ Keys are metered per organization. If you run out of credits, `POST /v1/tts` ret
 
 ## Rotating a key
 
-Revoke a key in the console and issue a new one. Revocation takes effect within a short caching window (the API caches key lookups for ~30 s).
+Revoke a key in the console and issue a new one. Revocation takes effect within a short caching window (the API caches key lookups for about 30 seconds).

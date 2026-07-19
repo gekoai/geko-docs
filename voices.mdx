@@ -1,4 +1,7 @@
-# Voices
+---
+title: "Voices"
+description: "The six Kazakh voices of tokay-kk-v1 — and how to audition them."
+---
 
 Model `tokay-kk-v1` (Kazakh) ships with **six** named voices — three female, three male. Pass a voice by `name`:
 
@@ -21,7 +24,9 @@ If you omit `voice`, the model's default (**Aigerim**) is used.
 
 ## Always fetch the live list
 
-The catalog grows and changes — **don't hard-code it**. Pull it at runtime (no API key needed):
+<Note>
+  The catalog grows and changes — **don't hard-code it.** Pull it at runtime (no API key needed).
+</Note>
 
 ```ts
 const { voices } = await geko.tts.voices("tokay-kk-v1");

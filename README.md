@@ -1,40 +1,31 @@
 # geko-docs
 
-Documentation for the [Geko](https://www.npmjs.com/package/@gekoai/sdk) speech API and SDK, built with [VitePress](https://vitepress.dev).
+Documentation for the [Geko](https://www.npmjs.com/package/@gekoai/sdk) speech API and SDK, built with [Mintlify](https://mintlify.com).
 
 ## Develop
 
-```bash
-npm install
-npm run docs:dev      # local preview at http://localhost:5173
-```
-
-## Build
+The Mintlify CLI requires a **Node LTS** (18 / 20 / 22) — it does not support Node 25+.
 
 ```bash
-npm run docs:build    # static site → .vitepress/dist  (fails on dead links)
-npm run docs:preview  # serve the built site locally
+npm i -g mint        # or: npx mint@latest <cmd>
+mint dev             # local preview at http://localhost:3000
+mint broken-links    # validate internal links
 ```
 
 ## Deploy
 
-Static output lives in `.vitepress/dist`. On **Vercel** (auto-detects VitePress):
-
-- Build command: `npm run docs:build`
-- Output directory: `.vitepress/dist`
-
-Also deployable to Cloudflare Pages, Netlify, or GitHub Pages — anywhere that serves static files.
+Connect this repo to **Mintlify** (the Mintlify GitHub app / dashboard). Mintlify builds directly from `docs.json` + the `.mdx` pages on every push to `main` — no build step or output directory to configure.
 
 ## Structure
 
 ```
-.vitepress/config.mts   nav, sidebar, theme
-index.md                home
-introduction, quickstart, authentication
+docs.json               config: theme, colors, navigation
+index.mdx               landing / overview
+quickstart, authentication
 sdk/                    typescript, cli, errors
 api/reference           HTTP reference
 guides/                 playing-audio, frameworks, latency, normalization
 voices, roadmap
 ```
 
-Content is grounded in the live API (`serve/tokay_serve.py`) and `@gekoai/sdk`. Keep it accurate — document what ships; put planned work in `roadmap.md`.
+Content is grounded in the live API (`serve/tokay_serve.py`) and `@gekoai/sdk`. Keep it accurate — document what ships; put planned work in `roadmap.mdx`.

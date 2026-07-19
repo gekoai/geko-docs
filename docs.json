@@ -1,0 +1,63 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "Geko",
+  "description": "Text-to-speech API for Kazakh — and beyond. A thin, familiar SDK and a simple HTTP API.",
+  "colors": {
+    "primary": "#15803D",
+    "light": "#4ADE80",
+    "dark": "#166534"
+  },
+  "navigation": {
+    "groups": [
+      {
+        "group": "Get started",
+        "icon": "rocket",
+        "pages": ["index", "quickstart", "authentication"]
+      },
+      {
+        "group": "SDK",
+        "icon": "code",
+        "pages": ["sdk/typescript", "sdk/cli", "sdk/errors"]
+      },
+      {
+        "group": "API reference",
+        "icon": "server",
+        "pages": ["api/reference"]
+      },
+      {
+        "group": "Guides",
+        "icon": "book-open",
+        "pages": [
+          "guides/playing-audio",
+          "guides/frameworks",
+          "guides/latency",
+          "guides/normalization"
+        ]
+      },
+      {
+        "group": "Reference",
+        "icon": "list",
+        "pages": ["voices", "roadmap"]
+      }
+    ]
+  },
+  "navbar": {
+    "links": [
+      {
+        "label": "GitHub",
+        "href": "https://github.com/gekoai"
+      }
+    ],
+    "primary": {
+      "type": "button",
+      "label": "npm",
+      "href": "https://www.npmjs.com/package/@gekoai/sdk"
+    }
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/gekoai"
+    }
+  }
+}

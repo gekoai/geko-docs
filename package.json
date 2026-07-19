@@ -2,14 +2,12 @@
   "name": "geko-docs",
   "version": "0.1.0",
   "private": true,
-  "type": "module",
-  "description": "Documentation for the Geko speech API and SDK.",
+  "description": "Documentation for the Geko speech API and SDK (Mintlify).",
   "scripts": {
-    "docs:dev": "vitepress dev",
-    "docs:build": "vitepress build",
-    "docs:preview": "vitepress preview"
+    "dev": "mint dev",
+    "check-links": "mint broken-links"
   },
   "devDependencies": {
-    "vitepress": "^1.6.3"
+    "mint": "^4.2.715"
   }
 }

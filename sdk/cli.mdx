@@ -1,4 +1,7 @@
-# CLI
+---
+title: "CLI"
+description: "Synthesize speech and browse the catalog from your terminal — no code."
+---
 
 `@gekoai/sdk` ships a CLI, so you can synthesize speech and browse the catalog without writing code.
 
@@ -80,6 +83,6 @@ Generate a clip per line of a file:
 i=0
 while IFS= read -r line; do
   gekoai say "$line" --voice Aigerim -o "clip_$i.wav"
-  i=$((i+1))
+  i=$((i + 1))
 done < lines.txt
 ```

@@ -1,4 +1,7 @@
-# Text normalization
+---
+title: "Text normalization"
+description: "How Geko turns numbers, currency, and dates into spoken Kazakh."
+---
 
 By default (`normalize: true`) Geko expands machine-y text — numbers, currency, percentages, dates, times — into how a Kazakh speaker would actually **say** it, before synthesis. This is why `152` comes out as words, not "one-five-two".
 
@@ -25,7 +28,7 @@ The normalizer is **Kazakh-specific** (it lives in `serve/normalize.py`). As mor
 Set `normalize: false` if:
 
 - Your text is **already** written exactly as it should be spoken.
-- You're feeding pre-processed / SSML-like text from your own pipeline.
+- You're feeding pre-processed text from your own pipeline.
 - You want digits read out literally by your own rules.
 
 ```ts
@@ -38,7 +41,8 @@ CLI:
 gekoai say "бір бір бір" --no-normalize -o out.wav
 ```
 
-## Tips
+<Tip>
+  Keep punctuation — it guides phrasing and pauses. A trailing `.` / `!` / `?` helps the model finish the last word cleanly (the server adds one if you omit it).
+</Tip>
 
-- Keep punctuation — it guides phrasing and pauses. A trailing `.`/`!`/`?` helps the model finish the last word cleanly (the server adds one if you omit it).
-- If a specific number or name is mispronounced, try spelling it phonetically in the text with `normalize: false`, or open an issue with the example.
+If a specific number or name is mispronounced, try spelling it phonetically in the text with `normalize: false`, or open an issue with the example.

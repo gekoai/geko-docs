@@ -1,0 +1,45 @@
+---
+title: "Geko"
+description: "Text-to-speech for Kazakh — and beyond. A thin, familiar SDK and a simple HTTP API."
+---
+
+Geko is a text-to-speech (TTS) API. You send text and a voice name; you get back speech audio. Today it speaks **Kazakh** (model `tokay-kk-v1`); more languages and models arrive on the same endpoints over time.
+
+The API is deliberately small — the whole surface is four endpoints:
+
+| Method | Endpoint | Auth | What it does |
+| --- | --- | --- | --- |
+| `POST` | `/v1/tts` | required | synthesize text → `audio/wav` |
+| `GET` | `/v1/models` | open | list models + their voices |
+| `GET` | `/v1/voices` | open | voice catalog for a model |
+| `GET` | `/health` | open | service status |
+
+**Base URL:** `https://geko--tokay-serve-web.modal.run`
+
+## Two ways to call it
+
+- **The SDK** (`@gekoai/sdk`) — a thin, typed TypeScript/JavaScript client with timeouts, retries, and a CLI.
+- **Raw HTTP** — it's a normal JSON + `audio/wav` API; call it from any language with `curl`, `fetch`, `requests`, and friends.
+
+## What you get back
+
+`POST /v1/tts` returns raw **WAV audio, 24 kHz, 16-bit PCM, mono**. Save it, play it, or pipe it into your telephony / agent stack.
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="bolt" href="/quickstart">
+    From an API key to your first `hello.wav` in under a minute.
+  </Card>
+  <Card title="TypeScript SDK" icon="js" href="/sdk/typescript">
+    Install `@gekoai/sdk` and call `geko.tts.create(...)`.
+  </Card>
+  <Card title="HTTP API" icon="server" href="/api/reference">
+    Endpoints, request/response shapes, and error codes.
+  </Card>
+  <Card title="Voices" icon="waveform-lines" href="/voices">
+    The six Kazakh voices — audition them and pick by ear.
+  </Card>
+</CardGroup>
+
+<Note>
+  Planning around what's next — streaming, MP3/Opus, an OpenAI-compatible endpoint, a Python SDK — see the [roadmap](/roadmap). Those are planned, not yet available.
+</Note>

@@ -1,4 +1,7 @@
-# Use it in your app
+---
+title: "Use it in your app"
+description: "Server-side integration for Next.js and Express — the safe way."
+---
 
 The golden rule: **call Geko from your server, and let your frontend call your server.** Your API key stays secret, and you avoid the browser CORS wall.
 
@@ -10,8 +13,7 @@ browser ──▶ your backend (holds GEKO_API_KEY) ──▶ Geko API
 
 A route handler that proxies synthesis. The key never leaves the server.
 
-```ts
-// app/api/tts/route.ts
+```ts app/api/tts/route.ts
 import { Geko, GekoError } from "@gekoai/sdk";
 
 const geko = new Geko({ apiKey: process.env.GEKO_API_KEY });
@@ -79,6 +81,9 @@ app.listen(3000);
 
 ## Serverless notes
 
-- **Cold starts:** the GPU backend scales to zero, so the first request after idle can take tens of seconds. Raise your function's max duration (e.g. Next.js `maxDuration`) and keep the SDK's default 120 s timeout.
+<Note>
+  **Cold starts:** the GPU backend scales to zero, so the first request after idle can take tens of seconds. Raise your function's max duration (e.g. Next.js `maxDuration`) and keep the SDK's default 120 s timeout.
+</Note>
+
 - **Reuse the client:** construct `new Geko(...)` once at module scope, not per request.
 - **Don't stream half-built audio:** the API returns the complete WAV in one response today (streaming is on the [roadmap](/roadmap)).

@@ -1,4 +1,7 @@
-# Latency & quality (NFE)
+---
+title: "Latency & quality (NFE)"
+description: "Tune the nfe dial and understand cold starts."
+---
 
 Two things dominate how fast you get audio and how good it sounds: the **`nfe`** setting and **cold starts**.
 
@@ -12,10 +15,8 @@ Two things dominate how fast you get audio and how good it sounds: the **`nfe`**
 | `32` (default) | Best quality — narration, published audio, anything you'll ship. |
 
 ```ts
-// snappy
-await geko.tts.create({ text, voice: "Aigerim", nfe: 16 });
-// polished
-await geko.tts.create({ text, voice: "Aigerim", nfe: 32 });
+await geko.tts.create({ text, voice: "Aigerim", nfe: 16 }); // snappy
+await geko.tts.create({ text, voice: "Aigerim", nfe: 32 }); // polished
 ```
 
 Rule of thumb: start at `32`; drop to `16` when responsiveness matters more than the last bit of fidelity.
@@ -28,7 +29,9 @@ The GPU backend **scales to zero when idle** to save cost. Consequences:
 - After a request, the service stays **warm for a few minutes**, so follow-up calls are fast.
 - The SDK's default **120 s** timeout is sized for this. Don't lower it below what a cold start needs unless you know the service is warm.
 
-**Keeping it warm:** if you have predictable traffic, a lightweight periodic `geko.health()` (or a pre-warm call before a known burst) keeps a container hot. Always-on warmth is a server-side deployment choice.
+<Tip>
+  **Keeping it warm:** if you have predictable traffic, a lightweight periodic `geko.health()` (or a pre-warm call before a known burst) keeps a container hot. Always-on warmth is a server-side deployment choice.
+</Tip>
 
 ## Other factors
 

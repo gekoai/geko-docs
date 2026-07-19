@@ -1,4 +1,7 @@
-# HTTP API reference
+---
+title: "HTTP API reference"
+description: "Endpoints, request/response shapes, and error codes for the Geko API."
+---
 
 Geko is a plain JSON + `audio/wav` API — call it from any language.
 
@@ -8,13 +11,9 @@ Geko is a plain JSON + `audio/wav` API — call it from any language.
 https://geko--tokay-serve-web.modal.run
 ```
 
-**Auth** — `POST /v1/tts` requires `Authorization: Bearer <key>`. The `GET` catalog endpoints are open.
+`POST /v1/tts` requires `Authorization: Bearer <key>`. The `GET` catalog endpoints are open. Interactive OpenAPI docs are served at `/docs`.
 
-Interactive OpenAPI docs are served at `/docs`.
-
----
-
-## `POST /v1/tts`
+## POST /v1/tts
 
 Synthesize speech. Returns raw **WAV** (`audio/wav`, 24 kHz, PCM16, mono).
 
@@ -49,8 +48,6 @@ Content-Type: application/json
 
 **Response** — `200 OK`, body is WAV bytes. Header `X-Tokay-Chars` reports the billed character count.
 
-**Example**
-
 ```bash
 curl -X POST https://geko--tokay-serve-web.modal.run/v1/tts \
   -H "Authorization: Bearer $GEKO_API_KEY" \
@@ -59,9 +56,7 @@ curl -X POST https://geko--tokay-serve-web.modal.run/v1/tts \
   --output out.wav
 ```
 
----
-
-## `GET /v1/models`
+## GET /v1/models
 
 List models on the platform and their voices. **Open** (no key).
 
@@ -83,13 +78,9 @@ curl https://geko--tokay-serve-web.modal.run/v1/models
 }
 ```
 
----
+## GET /v1/voices
 
-## `GET /v1/voices`
-
-Voice catalog for a model. **Open** (no key).
-
-**Query** — `model` (default `tokay-kk-v1`).
+Voice catalog for a model. **Open** (no key). Query param `model` (default `tokay-kk-v1`).
 
 ```bash
 curl "https://geko--tokay-serve-web.modal.run/v1/voices?model=tokay-kk-v1"
@@ -99,14 +90,17 @@ curl "https://geko--tokay-serve-web.modal.run/v1/voices?model=tokay-kk-v1"
 {
   "model": "tokay-kk-v1",
   "voices": [
-    { "name": "Aigerim", "gender": "female", "style": "Warm, professional", "best_for": "Reception, customer support" }
+    {
+      "name": "Aigerim",
+      "gender": "female",
+      "style": "Warm, professional",
+      "best_for": "Reception, customer support"
+    }
   ]
 }
 ```
 
----
-
-## `GET /health`
+## GET /health
 
 Service status. **Open** (no key).
 
@@ -117,8 +111,6 @@ curl https://geko--tokay-serve-web.modal.run/health
 ```json
 { "status": "ok", "models": ["tokay-kk-v1"] }
 ```
-
----
 
 ## Errors
 

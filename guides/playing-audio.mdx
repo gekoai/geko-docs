@@ -1,4 +1,7 @@
-# Playing & saving audio
+---
+title: "Playing & saving audio"
+description: "Turn the WAV bytes into files, playback, and other formats."
+---
 
 `tts.create()` (and `POST /v1/tts`) return raw **WAV** bytes — 24 kHz, 16-bit PCM, mono. Here's how to use them in each environment.
 
@@ -62,7 +65,7 @@ ffmpeg -i hello.wav -c:a libopus hello.opus  # Opus
 
 ## Telephony (8 kHz µ-law)
 
-For Twilio/SIP you'll want 8 kHz µ-law. Until it's a native output option, transcode:
+For Twilio / SIP you'll want 8 kHz µ-law. Until it's a native output option, transcode:
 
 ```bash
 ffmpeg -i hello.wav -ar 8000 -ac 1 -f mulaw hello.ulaw

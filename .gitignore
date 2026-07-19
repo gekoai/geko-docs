@@ -1,5 +1,4 @@
 node_modules/
-.vitepress/dist/
-.vitepress/cache/
+.mint/
 *.log
 .DS_Store
