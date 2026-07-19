@@ -1,0 +1,46 @@
+# Voices
+
+Model `tokay-kk-v1` (Kazakh) ships with **six** named voices — three female, three male. Pass a voice by `name`:
+
+```ts
+await geko.tts.create({ text: "Сәлем", voice: "Aigerim" });
+```
+
+If you omit `voice`, the model's default (**Aigerim**) is used.
+
+## Catalog
+
+| Voice | Gender | Style | Best for |
+| --- | --- | --- | --- |
+| **Aigerim** _(default)_ | female | Warm, professional | Reception, customer support |
+| **Arman** | male | Confident, professional | Support, IVR, announcements |
+| **Ainur** | female | Bright, energetic | Promos, upbeat greetings |
+| **Aruzhan** | female | Youthful, clear | Support, notifications |
+| **Sanzhar** | male | Neutral, precise | Information, readouts, IVR |
+| **Yerlan** | male | Calm, warm | Explanations, long-form |
+
+## Always fetch the live list
+
+The catalog grows and changes — **don't hard-code it**. Pull it at runtime (no API key needed):
+
+```ts
+const { voices } = await geko.tts.voices("tokay-kk-v1");
+```
+
+```bash
+gekoai voices --json
+# or
+curl "https://geko--tokay-serve-web.modal.run/v1/voices?model=tokay-kk-v1"
+```
+
+Each entry has `name`, `gender`, `style`, and `best_for` — enough to build a voice picker or route by use case.
+
+## Auditioning
+
+Generate a one-line sample per voice to pick by ear:
+
+```bash
+for v in Aigerim Arman Ainur Aruzhan Sanzhar Yerlan; do
+  gekoai say "Сәлеметсіз бе! Менің атым $v." --voice "$v" -o "sample_$v.wav"
+done
+```

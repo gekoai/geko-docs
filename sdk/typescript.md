@@ -1,0 +1,111 @@
+# TypeScript / JavaScript SDK
+
+`@gekoai/sdk` is a thin, typed client for the Geko API. Zero runtime dependencies (built on the global `fetch`), dual ESM + CommonJS, bundled type declarations. Runs on Node 20+, Deno, Bun, and browsers (via a [server-side proxy](/guides/frameworks)).
+
+## Install
+
+```bash
+npm install @gekoai/sdk
+```
+
+## The client
+
+```ts
+import { Geko } from "@gekoai/sdk";
+
+const geko = new Geko({ apiKey: process.env.GEKO_API_KEY });
+```
+
+The client is **namespaced by service**. Text-to-speech lives under `geko.tts`; platform-level calls (`models`, `health`) sit on the client. Future services (speech-to-text, …) will appear as sibling namespaces — see the [roadmap](/roadmap).
+
+### Options
+
+`new Geko(options?)`
+
+| Option | Type | Default | Notes |
+| --- | --- | --- | --- |
+| `apiKey` | `string` | `process.env.GEKO_API_KEY` | Falls back to `TOKAY_API_KEY`. Required (directly or via env). |
+| `baseUrl` | `string` | `https://geko--tokay-serve-web.modal.run` | Override for self-hosting / proxying. |
+| `fetch` | `typeof fetch` | global `fetch` | Inject a custom fetch (proxy, instrumentation, test double). |
+| `timeout` | `number` (ms) | `120000` | Per-request. `0` disables. Generous because of cold starts. |
+| `maxRetries` | `number` | `2` | Retries on transient failures. `0` disables. |
+| `headers` | `Record<string,string>` | `{}` | Extra headers on every request. |
+
+## `geko.tts.create(params)`
+
+Synthesize speech. Returns a `Promise<ArrayBuffer>` of raw **WAV** bytes (24 kHz, PCM16, mono).
+
+```ts
+const audio = await geko.tts.create({
+  text: "Сәлеметсіз бе! Тапсырыс нөмірі 152.",
+  voice: "Aigerim",
+  nfe: 32,
+});
+```
+
+| Param | Type | Default | Notes |
+| --- | --- | --- | --- |
+| `text` | `string` | — (required) | Text to synthesize (up to ~5000 chars). |
+| `model` | `string` | `tokay-kk-v1` | Model id. |
+| `voice` | `string` | model default (`Aigerim`) | Name from [`voices()`](#geko-tts-voices-model-options). |
+| `speed` | `number` | `1.0` | Speed multiplier (0.5–2). |
+| `nfe` | `number` | `32` | Diffusion steps: `16` fast, `32` quality. See [latency](/guides/latency). |
+| `normalize` | `boolean` | `true` | Expand numbers/currency/dates → spoken form. See [normalization](/guides/normalization). |
+| `signal` | `AbortSignal` | — | Cancel the request. |
+| `timeout` | `number` (ms) | client default | Per-call timeout override. |
+
+Turn the bytes into a file or a playable blob — see [Playing & saving audio](/guides/playing-audio).
+
+## `geko.tts.voices(model?, options?)`
+
+List the voices for a model. Returns `{ model, voices: Voice[] }`.
+
+```ts
+const { voices } = await geko.tts.voices("tokay-kk-v1");
+// [{ name: "Aigerim", gender: "female", style: "Warm, professional", best_for: "Reception, customer support" }, ...]
+```
+
+## `geko.models(options?)`
+
+List every model on the platform and its voices. Returns `{ data: Model[] }`.
+
+```ts
+const { data } = await geko.models();
+// [{ name: "tokay-kk-v1", lang: "kk", sample_rate: 24000, voices: [...], default_voice: "Aigerim" }]
+```
+
+## `geko.health(options?)`
+
+Service probe. Returns `{ status, models: string[] }`.
+
+```ts
+const { status, models } = await geko.health(); // { status: "ok", models: ["tokay-kk-v1"] }
+```
+
+`options` on the read methods accepts `{ signal?, timeout? }`.
+
+## Types
+
+```ts
+import type { Voice, Model, TtsParams, GekoOptions } from "@gekoai/sdk";
+
+interface Voice { name: string; gender?: string | null; style?: string | null; best_for?: string | null }
+interface Model { name: string; lang?: string | null; sample_rate?: number | null; voices?: string[]; default_voice?: string | null }
+```
+
+> Response types describe the server contract; like most thin SDKs, JSON bodies are not re-validated at runtime.
+
+## Timeouts, cancellation & retries
+
+Covered in depth in [Errors & retries](/sdk/errors). In short: transient failures (network, timeout, `5xx`) retry with backoff; `429` never does; pass an `AbortSignal` or a per-call `timeout` to control individual requests.
+
+## Bring your own fetch
+
+```ts
+const geko = new Geko({
+  apiKey: process.env.GEKO_API_KEY,
+  fetch: (input, init) => myInstrumentedFetch(input, init),
+});
+```
+
+Useful for proxies, logging, or tests. The SDK never binds your fetch to the wrong `this`.

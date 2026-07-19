@@ -1,0 +1,49 @@
+# Latency & quality (NFE)
+
+Two things dominate how fast you get audio and how good it sounds: the **`nfe`** setting and **cold starts**.
+
+## `nfe` — the quality/speed dial
+
+`nfe` (number of function evaluations) is how many diffusion steps the model runs. More steps = better quality, more time.
+
+| `nfe` | Use it for |
+| --- | --- |
+| `16` | Low-latency / interactive — noticeably faster, very usable quality. |
+| `32` (default) | Best quality — narration, published audio, anything you'll ship. |
+
+```ts
+// snappy
+await geko.tts.create({ text, voice: "Aigerim", nfe: 16 });
+// polished
+await geko.tts.create({ text, voice: "Aigerim", nfe: 32 });
+```
+
+Rule of thumb: start at `32`; drop to `16` when responsiveness matters more than the last bit of fidelity.
+
+## Cold starts
+
+The GPU backend **scales to zero when idle** to save cost. Consequences:
+
+- The **first** request after an idle period pays a cold start — this can be tens of seconds.
+- After a request, the service stays **warm for a few minutes**, so follow-up calls are fast.
+- The SDK's default **120 s** timeout is sized for this. Don't lower it below what a cold start needs unless you know the service is warm.
+
+**Keeping it warm:** if you have predictable traffic, a lightweight periodic `geko.health()` (or a pre-warm call before a known burst) keeps a container hot. Always-on warmth is a server-side deployment choice.
+
+## Other factors
+
+- **Text length.** Longer text = longer synthesis (roughly linear). Break very long inputs into sentences/paragraphs and synthesize in parallel if you need throughput.
+- **`speed`.** Changes playback pace (0.5–2), not generation time.
+- **Concurrency.** Independent requests run concurrently; the SDK doesn't serialize them.
+
+## Measuring
+
+Time a warm call end-to-end:
+
+```ts
+const t = performance.now();
+await geko.tts.create({ text: "Сәлем", voice: "Aigerim", nfe: 16 });
+console.log(`${Math.round(performance.now() - t)}ms`);
+```
+
+Run it twice — the second number (warm) is the one your users will usually see.
