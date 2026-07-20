@@ -1,45 +1,79 @@
 ---
 title: "Geko"
-description: "Text-to-speech for Kazakh — and beyond. A thin, familiar SDK and a simple HTTP API."
+description: "Text-to-speech that just works. Send text, get natural speech — via a thin SDK, a CLI, or plain HTTP."
 ---
 
-Geko is a text-to-speech (TTS) API. You send text and a voice name; you get back speech audio. Today it speaks **Kazakh** (model `tokay-kk-v1`); more languages and models arrive on the same endpoints over time.
+<Frame>
+  <img src="/images/geko-hero.png" alt="Geko — text-to-speech for Kazakh and beyond" />
+</Frame>
 
-The API is deliberately small — the whole surface is four endpoints:
+**Geko** turns text into natural-sounding speech. Send a string and a voice name; get back audio. It speaks **Kazakh** today (model `tokay-kk-v1`), with more languages arriving on the same endpoints — so the code you write now keeps working.
 
-| Method | Endpoint | Auth | What it does |
-| --- | --- | --- | --- |
-| `POST` | `/v1/tts` | required | synthesize text → `audio/wav` |
-| `GET` | `/v1/models` | open | list models + their voices |
-| `GET` | `/v1/voices` | open | voice catalog for a model |
-| `GET` | `/health` | open | service status |
-
-**Base URL:** `https://geko--tokay-serve-web.modal.run`
-
-## Two ways to call it
-
-- **The SDK** (`@gekoai/sdk`) — a thin, typed TypeScript/JavaScript client with timeouts, retries, and a CLI.
-- **Raw HTTP** — it's a normal JSON + `audio/wav` API; call it from any language with `curl`, `fetch`, `requests`, and friends.
-
-## What you get back
-
-`POST /v1/tts` returns raw **WAV audio, 24 kHz, 16-bit PCM, mono**. Save it, play it, or pipe it into your telephony / agent stack.
+It's designed to feel familiar (OpenAI / ElevenLabs style): a **thin, typed SDK**, a **CLI**, and a **simple HTTP API**. Pick whichever fits.
 
 <CardGroup cols={2}>
   <Card title="Quickstart" icon="bolt" href="/quickstart">
     From an API key to your first `hello.wav` in under a minute.
   </Card>
-  <Card title="TypeScript SDK" icon="js" href="/sdk/typescript">
-    Install `@gekoai/sdk` and call `geko.tts.create(...)`.
+  <Card title="Add it to your app" icon="plug" href="/guides/frameworks">
+    A safe server-side pattern for Next.js, Express, and beyond.
   </Card>
-  <Card title="HTTP API" icon="server" href="/api/reference">
-    Endpoints, request/response shapes, and error codes.
+</CardGroup>
+
+## What you can build
+
+<CardGroup cols={2}>
+  <Card title="Voice agents & IVR" icon="phone">
+    Low-latency speech for phone systems and assistants — stream sentence-by-sentence with `tts.stream()`.
+  </Card>
+  <Card title="Notifications & alerts" icon="bell">
+    Turn order updates, reminders, and statuses into spoken Kazakh.
+  </Card>
+  <Card title="Content & narration" icon="book-open">
+    Narrate articles, lessons, and audiobooks with named voices.
+  </Card>
+  <Card title="Accessibility" icon="universal-access">
+    Read UI and documents aloud for inclusive experiences.
+  </Card>
+</CardGroup>
+
+## Try it in one line
+
+No signup code required — grab a key and run:
+
+```bash
+export GEKO_API_KEY=sk-tokay-...
+npx @gekoai/sdk say "Сәлеметсіз бе!" --voice Aigerim -o hello.wav
+```
+
+## The API in a nutshell
+
+You send text + a voice; you get **WAV audio (24 kHz, 16-bit PCM, mono)**. The surface is small:
+
+| Method | Endpoint | Auth | What it does |
+| --- | --- | --- | --- |
+| `POST` | `/v1/tts` | required | synthesize text → `audio/wav` |
+| `POST` | `/v1/tts/stream` | required | streaming synthesis (chunked) |
+| `POST` | `/v1/audio/speech` | required | OpenAI-compatible alias |
+| `GET` | `/v1/models`, `/v1/voices`, `/health` | open | catalog + status |
+
+**Base URL:** `https://geko--tokay-serve-web.modal.run`
+
+<CardGroup cols={2}>
+  <Card title="TypeScript SDK" icon="code" href="/sdk/typescript">
+    `npm i @gekoai/sdk` → `geko.tts.create(...)` / `tts.stream(...)`.
+  </Card>
+  <Card title="HTTP API reference" icon="server" href="/api/reference">
+    Every endpoint, request/response shape, and error code.
   </Card>
   <Card title="Voices" icon="waveform-lines" href="/voices">
-    The six Kazakh voices — audition them and pick by ear.
+    Six Kazakh voices — audition and pick by ear.
+  </Card>
+  <Card title="Billing & credits" icon="credit-card" href="/billing">
+    $0.04 / 1k characters · $1.00 free to start.
   </Card>
 </CardGroup>
 
 <Note>
-  Planning around what's next — streaming, MP3/Opus, an OpenAI-compatible endpoint, a Python SDK — see the [roadmap](/roadmap). Those are planned, not yet available.
+  New here? Grab a key at [app.geko.sh](https://app.geko.sh) — new accounts get **$1.00 free** — then head to the [quickstart](/quickstart).
 </Note>

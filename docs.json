@@ -4,9 +4,15 @@
   "name": "Geko",
   "description": "Text-to-speech API for Kazakh — and beyond. A thin, familiar SDK and a simple HTTP API.",
   "colors": {
-    "primary": "#15803D",
+    "primary": "#16A34A",
     "light": "#4ADE80",
-    "dark": "#166534"
+    "dark": "#15803D"
+  },
+  "appearance": {
+    "default": "dark"
+  },
+  "background": {
+    "decoration": "gradient"
   },
   "navigation": {
     "groups": [
