@@ -1,0 +1,50 @@
+---
+title: "FAQ & troubleshooting"
+description: "Common questions and fixes."
+---
+
+<AccordionGroup>
+
+<Accordion title="My first request is slow or times out">
+  The GPU scales to zero when idle, so the first call after a quiet period pays a **cold start** (tens of seconds); the next calls are fast. Keep the SDK's default 120 s timeout, and for predictable traffic send a lightweight `geko.health()` to pre-warm. See [Latency & quality](/guides/latency).
+</Accordion>
+
+<Accordion title="I'm getting 401 Unauthorized">
+  The `Authorization: Bearer sk-tokay-…` header is missing or the key is wrong/revoked. Create or check keys in the [console](https://app.geko.sh). With the SDK, pass `apiKey` or set `GEKO_API_KEY`.
+</Accordion>
+
+<Accordion title="I'm getting 429 (out of credits)">
+  Your organization's balance is depleted. Top up in the [console](https://app.geko.sh). The SDK does not retry 429 — a retry can't create credits. See [Billing](/billing).
+</Accordion>
+
+<Accordion title="I'm getting 503 'auth backend unavailable'">
+  A transient hiccup validating the key. The SDK retries `503` automatically with backoff; if it persists, retry shortly or check the [console](https://app.geko.sh).
+</Accordion>
+
+<Accordion title="Can I call the API from the browser?">
+  CORS is enabled, so cross-origin calls work — **but never ship your API key to the client** (it's public the moment it's in browser code). Proxy through your own server. See [Use it in your app](/guides/frameworks).
+</Accordion>
+
+<Accordion title="How do I get MP3 or Opus instead of WAV?">
+  The API returns WAV (and raw `pcm` via the OpenAI endpoint) today. Convert locally with `ffmpeg` — see [Playing & saving audio](/guides/playing-audio). Native MP3/Opus is on the [roadmap](/roadmap).
+</Accordion>
+
+<Accordion title="Which voice should I use?">
+  Fetch the live catalog with [`geko.tts.voices()`](/voices) (or `GET /v1/voices`) — each entry has `style` and `best_for` to guide the choice. `Aigerim` is the default.
+</Accordion>
+
+<Accordion title="How do I stream audio for a voice agent?">
+  Use [`geko.tts.stream()`](/sdk/typescript) (SDK `0.3.0`+), which yields one WAV chunk per sentence so playback can start sooner. It needs the streaming endpoint `POST /v1/tts/stream`.
+</Accordion>
+
+<Accordion title="Is there a Python SDK?">
+  Not yet — use the [OpenAI-compatible endpoint](/guides/openai) with the `openai` Python package, or call the [HTTP API](/api/reference) directly. A native Python SDK is on the [roadmap](/roadmap).
+</Accordion>
+
+<Accordion title="How is usage billed?">
+  By **input characters**, per organization — $0.04 / 1,000 chars. See [Billing & credits](/billing).
+</Accordion>
+
+</AccordionGroup>
+
+Still stuck? Open an issue on [GitHub](https://github.com/gekoai) or email [amirlan@geko.sh](mailto:amirlan@geko.sh).

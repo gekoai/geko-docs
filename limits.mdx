@@ -1,0 +1,34 @@
+---
+title: "Limits & constraints"
+description: "Request limits, output format, rate limits, and cold starts."
+---
+
+## Request limits
+
+| Limit | Value |
+| --- | --- |
+| Text length | up to **~5,000 characters** per request |
+| `nfe` (diffusion steps) | `8`–`64` (`16` fast, `32` quality) |
+| `speed` | `0.5`–`2.0` |
+
+For longer inputs, split on sentence/paragraph boundaries and synthesize in parallel, or use [`tts.stream()`](/sdk/typescript) which chunks for you.
+
+## Output format
+
+- **`tts.create` / `/v1/tts`:** WAV — **24 kHz, 16-bit PCM, mono**.
+- **`/v1/audio/speech`:** `wav` or `pcm` (raw 16-bit PCM @ 24 kHz).
+- **`tts.stream` / `/v1/tts/stream`:** a sequence of WAV chunks (framed).
+- MP3 / Opus / µ-law are not native yet — [convert with `ffmpeg`](/guides/playing-audio) ([roadmap](/roadmap)).
+
+## Models & voices
+
+- **Model:** `tokay-kk-v1` (Kazakh) today. New models/languages appear on `GET /v1/models`.
+- **Voices:** six for `tokay-kk-v1` (`Aigerim` default). Always fetch [`/v1/voices`](/voices) rather than hard-coding.
+
+## Rate limits
+
+There is **no hard per-second rate limit** today — throughput is bounded by your [credit balance](/billing). Requests run concurrently; the SDK does not serialize them. (Explicit rate limiting may arrive later.)
+
+## Cold starts
+
+The GPU backend **scales to zero** when idle to save cost, so the **first request after an idle period** can take tens of seconds; subsequent calls (within a few minutes) are fast. The SDK's default **120 s** timeout is sized for this — see [Latency & quality](/guides/latency) for tuning and keep-warm tips.

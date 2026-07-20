@@ -1,0 +1,36 @@
+---
+title: "Billing & credits"
+description: "How Geko meters usage, what it costs, and how credits work."
+---
+
+Geko bills by **input characters** — the text you send to synthesize. Billing is per **organization**, tracked as a credit balance.
+
+## Pricing
+
+| | |
+| --- | --- |
+| **Rate** | **$0.04 per 1,000 characters** |
+| **In credits** | 25,000 characters = **$1.00** |
+| **Free on signup** | **$1.00** (25,000 characters) for every new organization |
+
+As a rough feel: **$1 ≈ 25,000 characters ≈ ~30 minutes** of Kazakh speech (Kazakh runs ~14 characters per second of audio).
+
+Only **successful** synthesis is billed, on the **input** character count (the `X-Tokay-Chars` response header reports it). The catalog endpoints — `/v1/models`, `/v1/voices`, `/health` — are open and **free**.
+
+## Running out
+
+When your balance hits zero, synthesis requests return **HTTP 429** with a `detail` telling you you're out of credits. Top up in the [console](https://app.geko.sh). The SDK surfaces this as a `GekoError` with `status === 429` and does **not** retry it (see [Errors & retries](/sdk/errors)) — a retry can't create credits.
+
+## Managing credits
+
+- **Balance & history:** view your current balance and per-request usage in the [console](https://app.geko.sh).
+- **Top up:** add credits in the console's billing section.
+- **Estimate before you send:** `chars = text.length`, `cost_usd = chars / 25000`.
+
+```ts
+const cost = (text: string) => text.length / 25_000; // USD
+```
+
+<Note>
+  Streaming (`tts.stream`) and the OpenAI-compatible endpoint bill identically to `tts.create` — by input characters, once per request. Pricing is subject to change; the [console](https://app.geko.sh) always shows the current rate.
+</Note>

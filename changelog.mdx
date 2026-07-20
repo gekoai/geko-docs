@@ -1,0 +1,25 @@
+---
+title: "Changelog"
+description: "Notable changes to the Geko API and SDK."
+---
+
+The SDK follows [semantic versioning](https://semver.org). The authoritative SDK changelog lives in [`CHANGELOG.md`](https://github.com/gekoai/geko-ts-sdk/blob/main/CHANGELOG.md).
+
+## SDK `0.3.0`
+
+- **Streaming:** [`geko.tts.stream()`](/sdk/typescript) — an async iterable yielding one WAV chunk per sentence for lower time-to-first-audio on long text.
+
+## SDK `0.2.0`
+
+- **CLI:** `npx @gekoai/sdk say | voices | models`. See [CLI](/sdk/cli).
+- Clarified browser usage (proxy through your server; keep your key secret).
+
+## SDK `0.1.0`
+
+- Initial release: `Geko` client with `tts.create()`, `tts.voices()`, `models()`, `health()`. Zero runtime dependencies, dual ESM + CommonJS, typed errors, timeouts, and automatic retries.
+
+## API
+
+- Added [`POST /v1/tts/stream`](/api/reference) (sentence-level streaming) and the OpenAI-compatible [`POST /v1/audio/speech`](/guides/openai) (`wav` / `pcm`).
+- Enabled **CORS** for browser callers.
+- The core `POST /v1/tts` contract is unchanged: WAV, 24 kHz, PCM16, mono.

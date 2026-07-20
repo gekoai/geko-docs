@@ -39,7 +39,7 @@
       {
         "group": "Reference",
         "icon": "list",
-        "pages": ["voices", "roadmap"]
+        "pages": ["voices", "billing", "limits", "faq", "changelog", "roadmap"]
       }
     ]
   },
@@ -48,12 +48,16 @@
       {
         "label": "GitHub",
         "href": "https://github.com/gekoai"
+      },
+      {
+        "label": "npm",
+        "href": "https://www.npmjs.com/package/@gekoai/sdk"
       }
     ],
     "primary": {
       "type": "button",
-      "label": "npm",
-      "href": "https://www.npmjs.com/package/@gekoai/sdk"
+      "label": "Get an API key",
+      "href": "https://app.geko.sh"
     }
   },
   "footer": {
