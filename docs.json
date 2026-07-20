@@ -31,6 +31,7 @@
         "pages": [
           "guides/playing-audio",
           "guides/frameworks",
+          "guides/openai",
           "guides/latency",
           "guides/normalization"
         ]

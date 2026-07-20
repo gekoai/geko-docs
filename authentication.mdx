@@ -40,7 +40,7 @@ export GEKO_API_KEY=sk-tokay-...
 - Expose your *own* thin endpoint to your frontend; keep the Geko key on the server.
 - Don't put the key in client-side JS, a public repo, or a mobile bundle.
 
-The API also does not currently send CORS headers, so direct cross-origin browser calls are blocked anyway — another reason to proxy through your server. See [Use it in your app](/guides/frameworks) for a Next.js route example. (Browser CORS is on the [roadmap](/roadmap).)
+The API now sends permissive CORS headers, so a browser *can* call it cross-origin — but that does **not** make it safe to expose your key. Keep synthesis behind your own server. See [Use it in your app](/guides/frameworks) for a Next.js route example.
 
 ## Quotas & billing
 

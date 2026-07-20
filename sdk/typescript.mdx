@@ -59,6 +59,19 @@ const audio = await geko.tts.create({
 
 Turn the bytes into a file or a playable blob — see [Playing & saving audio](/guides/playing-audio).
 
+## `geko.tts.stream(params)`
+
+Stream synthesis **sentence-by-sentence** to start playback sooner on long text. Returns an async iterable of WAV `ArrayBuffer`s — one per chunk, each independently playable. Same params as `create()`.
+
+```ts
+for await (const wav of geko.tts.stream({ text: longText, voice: "Aigerim" })) {
+  // each `wav` is a standalone WAV chunk — play or buffer it as it arrives
+  console.log(`chunk: ${wav.byteLength} bytes`);
+}
+```
+
+Streams aren't retried (a partial stream can't be replayed); use `signal` to cancel and a per-call `timeout` to bound the whole stream. Under the hood it consumes the framed `wav-frames-v1` protocol from [`POST /v1/tts/stream`](/api/reference).
+
 ## `geko.tts.voices(model?, options?)`
 
 List the voices for a model. Returns `{ model, voices: Voice[] }`.
