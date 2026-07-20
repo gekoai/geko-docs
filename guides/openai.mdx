@@ -1,0 +1,57 @@
+---
+title: "OpenAI compatibility"
+description: "Point the OpenAI SDK at Geko by changing two lines."
+---
+
+Geko exposes an **OpenAI-compatible** speech endpoint at `POST /v1/audio/speech`. If you already use OpenAI's TTS, switch to Geko by changing the **base URL** and **model** — the rest of your code stays the same.
+
+## Node (openai SDK)
+
+```ts
+import OpenAI from "openai";
+import { writeFile } from "node:fs/promises";
+
+const client = new OpenAI({
+  baseURL: "https://geko--tokay-serve-web.modal.run/v1",
+  apiKey: process.env.GEKO_API_KEY, // your sk-tokay-... key
+});
+
+const res = await client.audio.speech.create({
+  model: "tts-1",            // OpenAI ids are accepted + mapped to Geko's default
+  voice: "Aigerim",          // a Geko voice name
+  input: "Сәлеметсіз бе!",
+  response_format: "wav",    // "wav" or "pcm"
+});
+
+await writeFile("hello.wav", Buffer.from(await res.arrayBuffer()));
+```
+
+## Python (openai SDK)
+
+```python
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="https://geko--tokay-serve-web.modal.run/v1",
+    api_key=os.environ["GEKO_API_KEY"],
+)
+
+res = client.audio.speech.create(
+    model="tts-1",
+    voice="Aigerim",
+    input="Сәлеметсіз бе!",
+    response_format="wav",
+)
+res.stream_to_file("hello.wav")
+```
+
+## Notes & differences
+
+- **Voices** are Geko voice names (`Aigerim`, `Arman`, …) — not OpenAI's (`alloy`, etc.). Fetch the live list from [`/v1/voices`](/voices).
+- **`model`**: OpenAI ids (`tts-1`, `tts-1-hd`, `gpt-4o-mini-tts`) are accepted and mapped to Geko's default model; or pass a Geko model id like `tokay-kk-v1`.
+- **`response_format`**: `wav` (default) and `pcm` (raw 16-bit PCM @ 24 kHz) are supported. `mp3`/`opus`/`aac`/`flac` return `400` for now — [convert with `ffmpeg`](/guides/playing-audio) or use the [native SDK](/sdk/typescript).
+- For streaming and the full typed surface, prefer the [`@gekoai/sdk`](/sdk/typescript) client.
+
+<Note>
+  This endpoint is a thin compatibility shim over the same engine as [`POST /v1/tts`](/api/reference) — handy for dropping Geko into tools that already speak OpenAI.
+</Note>

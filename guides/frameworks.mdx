@@ -3,7 +3,7 @@ title: "Use it in your app"
 description: "Server-side integration for Next.js and Express — the safe way."
 ---
 
-The golden rule: **call Geko from your server, and let your frontend call your server.** Your API key stays secret, and you avoid the browser CORS wall.
+The golden rule: **call Geko from your server, and let your frontend call your server.** The API now allows cross-origin browser calls (CORS), but that doesn't make it safe to expose your key — a key shipped to the client is public. Keep it on the server.
 
 ```
 browser ──▶ your backend (holds GEKO_API_KEY) ──▶ Geko API

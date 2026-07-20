@@ -11,7 +11,7 @@ Geko is a plain JSON + `audio/wav` API — call it from any language.
 https://geko--tokay-serve-web.modal.run
 ```
 
-`POST /v1/tts` requires `Authorization: Bearer <key>`. The `GET` catalog endpoints are open. Interactive OpenAPI docs are served at `/docs`.
+`POST /v1/tts`, `POST /v1/tts/stream`, and `POST /v1/audio/speech` require `Authorization: Bearer <key>`. The `GET` catalog endpoints are open. Interactive OpenAPI docs are served at `/docs`.
 
 ## POST /v1/tts
 
@@ -55,6 +55,47 @@ curl -X POST https://geko--tokay-serve-web.modal.run/v1/tts \
   -d '{"text":"Сәлеметсіз бе!","model":"tokay-kk-v1","voice":"Aigerim"}' \
   --output out.wav
 ```
+
+## POST /v1/tts/stream
+
+Sentence-level streaming — the same request body as `/v1/tts`, but the response arrives as each sentence is synthesized (lower time-to-first-audio for long text). Auth + metering are identical to `/v1/tts`.
+
+**Response** — `Content-Type: application/octet-stream`, header `X-Tokay-Stream: wav-frames-v1`. The body is a sequence of frames; each frame is a **4-byte big-endian length** followed by that many bytes of a complete WAV. Read a length, read that many bytes (one WAV chunk), repeat until the stream closes.
+
+```bash
+curl -N -X POST https://geko--tokay-serve-web.modal.run/v1/tts/stream \
+  -H "Authorization: Bearer $GEKO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"text":"Сәлеметсіз бе! Тапсырысыңыз дайын. Рахмет!","voice":"Aigerim"}' \
+  --output stream.bin
+```
+
+Most callers should use the SDK, which wraps this as an async iterable — see [`geko.tts.stream()`](/sdk/typescript).
+
+## POST /v1/audio/speech
+
+**OpenAI-compatible** alias — point the OpenAI SDK at Geko by swapping the base URL and model. Maps OpenAI's request shape onto the Tokay engine.
+
+**Body**
+
+```json
+{
+  "model": "tts-1",
+  "input": "Сәлеметсіз бе!",
+  "voice": "Aigerim",
+  "response_format": "wav"
+}
+```
+
+| Field | Type | Default | Notes |
+| --- | --- | --- | --- |
+| `input` | string | — (required) | Text to synthesize. |
+| `voice` | string | model default (`Aigerim`) | Voice name. |
+| `model` | string | `tokay-kk-v1` | OpenAI ids (`tts-1`, `tts-1-hd`, `gpt-4o-mini-tts`) are accepted and mapped to the default. |
+| `response_format` | string | `wav` | `wav` or `pcm` (raw 16-bit PCM @ 24 kHz). `mp3`/`opus`/`aac`/`flac` return `400` (not transcoded yet). |
+| `speed` | number | `1.0` | Speed multiplier. |
+
+**Response** — `audio/wav`, or `audio/pcm` for `response_format: "pcm"`. See [OpenAI compatibility](/guides/openai) for a full example.
 
 ## GET /v1/models
 
