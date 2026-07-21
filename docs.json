@@ -1,38 +1,57 @@
 {
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
-  "name": "Geko",
+  "name": "geko",
   "description": "Text-to-speech API for Kazakh — and beyond. A thin, familiar SDK and a simple HTTP API.",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#4ADE80",
-    "dark": "#15803D"
+    "primary": "#789B33",
+    "light": "#9DBF57",
+    "dark": "#5F7D28"
   },
   "appearance": {
-    "default": "dark"
+    "default": "dark",
+    "strict": true
+  },
+  "fonts": {
+    "heading": {
+      "family": "Geist Mono",
+      "weight": 500
+    },
+    "body": {
+      "family": "Geist"
+    }
   },
   "background": {
-    "decoration": "gradient"
+    "color": {
+      "light": "#FAFAF7",
+      "dark": "#0A0B07"
+    }
   },
+  "logo": {
+    "light": "/images/logo-light.svg",
+    "dark": "/images/logo-dark.svg",
+    "href": "https://geko.sh"
+  },
+  "favicon": "/images/geko-icon.png",
   "navigation": {
     "groups": [
       {
-        "group": "Get started",
+        "group": "get started",
         "icon": "rocket",
         "pages": ["index", "quickstart", "authentication"]
       },
       {
-        "group": "SDK",
+        "group": "sdk",
         "icon": "code",
         "pages": ["sdk/typescript", "sdk/cli", "sdk/errors"]
       },
       {
-        "group": "API reference",
+        "group": "api reference",
         "icon": "server",
         "pages": ["api/reference"]
       },
       {
-        "group": "Guides",
+        "group": "guides",
         "icon": "book-open",
         "pages": [
           "guides/playing-audio",
@@ -43,7 +62,7 @@
         ]
       },
       {
-        "group": "Reference",
+        "group": "reference",
         "icon": "list",
         "pages": ["voices", "billing", "limits", "faq", "changelog", "roadmap"]
       }
@@ -52,7 +71,7 @@
   "navbar": {
     "links": [
       {
-        "label": "GitHub",
+        "label": "github",
         "href": "https://github.com/gekoai"
       },
       {
@@ -62,7 +81,7 @@
     ],
     "primary": {
       "type": "button",
-      "label": "Get an API key",
+      "label": "get an api key",
       "href": "https://app.geko.sh"
     }
   },

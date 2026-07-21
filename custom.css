@@ -1,0 +1,209 @@
+/* ============================================================
+   geko docs — brand skin
+   Matches geko.sh (landing) + app.geko.sh (console):
+   flat warm near-black, muted olive-lime accent,
+   Geist Mono headings/code, Geist body. Dark-only, minimal.
+   No grids, no gradients, no glow.
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&display=swap');
+
+:root,
+.dark {
+  --geko-bg: #0a0b07;           /* page — warm near-black */
+  --geko-surface: #14160d;      /* raised: cards, code, secondary buttons */
+  --geko-surface-2: #101109;    /* subtle fills */
+  --geko-surface-hover: #191b10;
+  --geko-text: #f0f1e4;         /* primary text — warm off-white */
+  --geko-body: #c4c7b8;         /* body copy */
+  --geko-muted: #9a9d8a;        /* muted olive-gray */
+  --geko-accent: #789b33;       /* olive-lime (fills) */
+  --geko-link: #9dbf57;         /* readable olive-lime for text on dark (not neon) */
+  --geko-border: rgba(240, 241, 228, 0.09);
+  --geko-border-strong: rgba(240, 241, 228, 0.15);
+  --geko-radius: 10px;
+  --geko-mono: 'Geist Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  --geko-sans: 'Geist', ui-sans-serif, system-ui, sans-serif;
+}
+
+/* ---- kill AI-ish background decoration (grid / gradient) --- */
+[class*="bg-grid"],
+[class*="bg-gradient-to"][class*="inset-0"],
+[class*="radial-gradient"][class*="inset-0"] {
+  display: none !important;
+}
+
+/* ---- base ------------------------------------------------- */
+html.dark,
+body {
+  background-color: var(--geko-bg);
+  color: var(--geko-text);
+  font-family: var(--geko-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* headings — mono, tight tracking, warm white */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--geko-mono);
+  color: var(--geko-text);
+  letter-spacing: -0.02em;
+  font-weight: 500;
+}
+h1 { letter-spacing: -0.04em; }
+
+/* body copy */
+.prose p, .prose li { color: var(--geko-body); }
+
+/* ---- links ------------------------------------------------ */
+.prose a,
+main a:not([class]) {
+  color: var(--geko-link);
+  text-decoration: none;
+  text-underline-offset: 3px;
+  transition: color 0.15s ease;
+}
+.prose a:hover,
+main a:not([class]):hover {
+  color: #b3d072;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+}
+
+/* ---- selection ------------------------------------------- */
+::selection {
+  background: rgba(120, 155, 51, 0.30);
+  color: #f4f6ea;
+}
+
+/* ---- inline code ----------------------------------------- */
+:not(pre) > code {
+  font-family: var(--geko-mono) !important;
+  background: var(--geko-surface) !important;
+  border: 1px solid var(--geko-border) !important;
+  color: #cfdcae !important;
+  border-radius: 6px !important;
+  padding: 0.12em 0.4em !important;
+  font-size: 0.86em !important;
+  font-weight: 400;
+}
+
+/* ---- code blocks — raised olive-black surface ------------ */
+pre,
+pre.shiki,
+.prose pre,
+html.dark pre.shiki {
+  font-family: var(--geko-mono) !important;
+  background-color: var(--geko-surface) !important;
+  border: 1px solid var(--geko-border) !important;
+  border-radius: var(--geko-radius) !important;
+}
+pre code, pre .line { font-family: var(--geko-mono) !important; background: transparent !important; }
+
+/* ---- cards (Mintlify <Card>) ----------------------------- */
+/* card anchors have no class; the visible box is the styled child */
+#content-area a[href] > div,
+.prose a[href] > div[class*="border"],
+div[class*="not-prose"] a[href] > div {
+  background: var(--geko-surface) !important;
+  border: 1px solid var(--geko-border) !important;
+  border-radius: var(--geko-radius) !important;
+  box-shadow: none !important;
+  transition: border-color 0.18s ease, background 0.18s ease;
+}
+#content-area a[href]:hover > div,
+.prose a[href]:hover > div[class*="border"] {
+  border-color: rgba(120, 155, 51, 0.40) !important;
+  background: var(--geko-surface-hover) !important;
+}
+
+/* ---- callouts / Note, Tip, Warning, Info ----------------- */
+.prose blockquote,
+div[class*="callout"] {
+  background: var(--geko-surface-2) !important;
+  border: 1px solid var(--geko-border) !important;
+  border-left: 2px solid var(--geko-accent) !important;
+  border-radius: var(--geko-radius) !important;
+  color: var(--geko-body);
+  box-shadow: none !important;
+}
+.prose blockquote p { color: var(--geko-body); }
+/* recolor the default blue Note icon to muted olive */
+div[class*="callout"] svg { color: var(--geko-accent) !important; fill: var(--geko-accent) !important; }
+
+/* ---- tables ---------------------------------------------- */
+.prose table { border-color: var(--geko-border) !important; }
+.prose thead,
+.prose th {
+  font-family: var(--geko-mono);
+  color: var(--geko-text);
+  border-color: var(--geko-border-strong) !important;
+  letter-spacing: -0.01em;
+  font-weight: 500;
+}
+.prose td,
+.prose tr { border-color: var(--geko-border) !important; }
+
+/* ---- sidebar / nav --------------------------------------- */
+#sidebar a,
+#navigation-items a { color: var(--geko-muted); }
+#sidebar a:hover { color: var(--geko-text); }
+/* active nav item — subtle olive tint, not a loud solid pill */
+#sidebar a[aria-current="page"],
+#sidebar a[data-active="true"],
+#sidebar a.active,
+aside a[aria-current="page"],
+nav a[aria-current="page"],
+#navigation-items a[aria-current="page"] {
+  background-color: rgba(120, 155, 51, 0.14) !important;
+  color: #d0e0a4 !important;
+}
+/* group / section labels — mono, tracked */
+#sidebar .sidebar-group-header,
+#sidebar h5,
+.sidebar-title {
+  font-family: var(--geko-mono);
+  letter-spacing: 0.04em;
+  color: var(--geko-muted);
+}
+
+/* ---- navbar / topbar borders ----------------------------- */
+#navbar, #topbar { border-color: var(--geko-border) !important; }
+
+/* primary CTA — muted olive-lime fill, dark text, mono */
+#navbar a[class*="primary"],
+a[class*="bg-primary"],
+.btn-primary {
+  background: var(--geko-accent) !important;
+  color: #0a0b06 !important;
+  border-radius: 8px !important;
+  font-family: var(--geko-mono);
+  font-weight: 500;
+  box-shadow: none !important;
+}
+#navbar a[class*="primary"]:hover,
+.btn-primary:hover { background: #86ac3b !important; }
+
+/* ---- search bar ------------------------------------------ */
+#search-bar-entry,
+button[id*="search"] {
+  background: var(--geko-surface) !important;
+  border: 1px solid var(--geko-border) !important;
+  border-radius: 8px !important;
+  font-family: var(--geko-mono);
+  color: var(--geko-muted);
+}
+
+/* ---- footer ---------------------------------------------- */
+footer { border-color: var(--geko-border) !important; color: var(--geko-muted); }
+
+/* ---- scrollbar ------------------------------------------- */
+* { scrollbar-width: thin; scrollbar-color: rgba(240, 241, 228, 0.12) transparent; }
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-thumb {
+  background: rgba(240, 241, 228, 0.12);
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-thumb:hover { background: rgba(240, 241, 228, 0.22); background-clip: content-box; }

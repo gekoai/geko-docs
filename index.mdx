@@ -1,13 +1,10 @@
 ---
-title: "Geko"
-description: "Text-to-speech that just works. Send text, get natural speech — via a thin SDK, a CLI, or plain HTTP."
+title: "text-to-speech that just works"
+sidebarTitle: "overview"
+description: "send text, get natural speech in Kazakh and beyond. a thin SDK, a CLI, and a simple HTTP API."
 ---
 
-<Frame>
-  <img src="/images/geko-hero.png" alt="Geko — text-to-speech for Kazakh and beyond" />
-</Frame>
-
-**Geko** turns text into natural-sounding speech. Send a string and a voice name; get back audio. It speaks **Kazakh** today (model `tokay-kk-v1`), with more languages arriving on the same endpoints — so the code you write now keeps working.
+**Geko** turns text into natural-sounding speech. Send a string and a voice name; get back audio. It speaks **Kazakh** today (model `tokay-kk-v1`), with more languages arriving on the same endpoints, so the code you write now keeps working.
 
 It's designed to feel familiar (OpenAI / ElevenLabs style): a **thin, typed SDK**, a **CLI**, and a **simple HTTP API**. Pick whichever fits.
 
@@ -20,7 +17,7 @@ It's designed to feel familiar (OpenAI / ElevenLabs style): a **thin, typed SDK*
   </Card>
 </CardGroup>
 
-## What you can build
+## what you can build
 
 <CardGroup cols={2}>
   <Card title="Voice agents & IVR" icon="phone">
@@ -37,7 +34,7 @@ It's designed to feel familiar (OpenAI / ElevenLabs style): a **thin, typed SDK*
   </Card>
 </CardGroup>
 
-## Try it in one line
+## try it in one line
 
 No signup code required — grab a key and run:
 
@@ -46,7 +43,7 @@ export GEKO_API_KEY=sk-tokay-...
 npx @gekoai/sdk say "Сәлеметсіз бе!" --voice Aigerim -o hello.wav
 ```
 
-## The API in a nutshell
+## the API in a nutshell
 
 You send text + a voice; you get **WAV audio (24 kHz, 16-bit PCM, mono)**. The surface is small:
 
