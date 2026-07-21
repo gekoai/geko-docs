@@ -1,9 +1,9 @@
 ---
-title: "HTTP API reference"
-description: "Endpoints, request/response shapes, and error codes for the Geko API."
+title: "Overview"
+description: "Base URL, auth, conventions, and errors for the geko HTTP API."
 ---
 
-Geko is a plain JSON + `audio/wav` API — call it from any language.
+geko is a plain JSON + `audio/wav` API — call it from any language. Each endpoint has its own page with request/response schemas and a **Try it** playground you can run right here in the docs (the catalog endpoints work without a key).
 
 **Base URL**
 
@@ -11,147 +11,39 @@ Geko is a plain JSON + `audio/wav` API — call it from any language.
 https://geko--tokay-serve-web.modal.run
 ```
 
-`POST /v1/tts`, `POST /v1/tts/stream`, and `POST /v1/audio/speech` require `Authorization: Bearer <key>`. The `GET` catalog endpoints are open. Interactive OpenAPI docs are served at `/docs`.
+## Authentication
 
-## POST /v1/tts
-
-Synthesize speech. Returns raw **WAV** (`audio/wav`, 24 kHz, PCM16, mono).
-
-**Headers**
+`POST /v1/tts`, `POST /v1/tts/stream`, and `POST /v1/audio/speech` require a bearer token:
 
 ```
 Authorization: Bearer sk-tokay-...
-Content-Type: application/json
 ```
 
-**Body**
+The `GET` catalog endpoints (`/v1/models`, `/v1/voices`, `/health`) are **open** — no key — so docs, playgrounds, and voice pickers render without one. Create keys in the [console](https://app.geko.sh); see [Authentication](/authentication) for handling them safely.
 
-```json
-{
-  "text": "Сәлеметсіз бе! Тапсырыс нөмірі 152, сомасы 5500 ₸.",
-  "model": "tokay-kk-v1",
-  "voice": "Aigerim",
-  "speed": 1.0,
-  "nfe": 32,
-  "normalize": true
-}
-```
+## Conventions
 
-| Field | Type | Default | Notes |
-| --- | --- | --- | --- |
-| `text` | string | — (required) | Text to synthesize (up to ~5000 chars). |
-| `model` | string | `tokay-kk-v1` | Model id. |
-| `voice` | string | model default (`Aigerim`) | Voice name from `/v1/voices`. |
-| `speed` | number | `1.0` | Speed multiplier (0.5–2). |
-| `nfe` | integer | `32` | Diffusion steps: `16` fast, `32` quality. |
-| `normalize` | boolean | `true` | Expand numbers/currency/dates into spoken Kazakh. |
+- **Audio out.** Synthesis returns raw **WAV** — `audio/wav`, 24 kHz, 16-bit PCM, mono. The `X-Tokay-Chars` response header reports the billed character count.
+- **JSON in.** Send `Content-Type: application/json`.
+- **Streaming.** `POST /v1/tts/stream` returns `application/octet-stream` framed as `wav-frames-v1`: a 4-byte big-endian length, then that many bytes of one complete WAV, repeated. See the [streaming guide](/guides/streaming).
+- **OpenAI-compatible.** `POST /v1/audio/speech` accepts OpenAI's request shape — see [OpenAI compatibility](/guides/openai).
 
-**Response** — `200 OK`, body is WAV bytes. Header `X-Tokay-Chars` reports the billed character count.
+## Endpoints
 
-```bash
-curl -X POST https://geko--tokay-serve-web.modal.run/v1/tts \
-  -H "Authorization: Bearer $GEKO_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"text":"Сәлеметсіз бе!","model":"tokay-kk-v1","voice":"Aigerim"}' \
-  --output out.wav
-```
-
-## POST /v1/tts/stream
-
-Sentence-level streaming — the same request body as `/v1/tts`, but the response arrives as each sentence is synthesized (lower time-to-first-audio for long text). Auth + metering are identical to `/v1/tts`.
-
-**Response** — `Content-Type: application/octet-stream`, header `X-Tokay-Stream: wav-frames-v1`. The body is a sequence of frames; each frame is a **4-byte big-endian length** followed by that many bytes of a complete WAV. Read a length, read that many bytes (one WAV chunk), repeat until the stream closes.
-
-```bash
-curl -N -X POST https://geko--tokay-serve-web.modal.run/v1/tts/stream \
-  -H "Authorization: Bearer $GEKO_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"text":"Сәлеметсіз бе! Тапсырысыңыз дайын. Рахмет!","voice":"Aigerim"}' \
-  --output stream.bin
-```
-
-Most callers should use the SDK, which wraps this as an async iterable — see [`geko.tts.stream()`](/sdk/typescript).
-
-## POST /v1/audio/speech
-
-**OpenAI-compatible** alias — point the OpenAI SDK at Geko by swapping the base URL and model. Maps OpenAI's request shape onto the Tokay engine.
-
-**Body**
-
-```json
-{
-  "model": "tts-1",
-  "input": "Сәлеметсіз бе!",
-  "voice": "Aigerim",
-  "response_format": "wav"
-}
-```
-
-| Field | Type | Default | Notes |
-| --- | --- | --- | --- |
-| `input` | string | — (required) | Text to synthesize. |
-| `voice` | string | model default (`Aigerim`) | Voice name. |
-| `model` | string | `tokay-kk-v1` | OpenAI ids (`tts-1`, `tts-1-hd`, `gpt-4o-mini-tts`) are accepted and mapped to the default. |
-| `response_format` | string | `wav` | `wav` or `pcm` (raw 16-bit PCM @ 24 kHz). `mp3`/`opus`/`aac`/`flac` return `400` (not transcoded yet). |
-| `speed` | number | `1.0` | Speed multiplier. |
-
-**Response** — `audio/wav`, or `audio/pcm` for `response_format: "pcm"`. See [OpenAI compatibility](/guides/openai) for a full example.
-
-## GET /v1/models
-
-List models on the platform and their voices. **Open** (no key).
-
-```bash
-curl https://geko--tokay-serve-web.modal.run/v1/models
-```
-
-```json
-{
-  "data": [
-    {
-      "name": "tokay-kk-v1",
-      "lang": "kk",
-      "sample_rate": 24000,
-      "voices": ["Aigerim", "Arman", "Ainur", "Aruzhan", "Sanzhar", "Yerlan"],
-      "default_voice": "Aigerim"
-    }
-  ]
-}
-```
-
-## GET /v1/voices
-
-Voice catalog for a model. **Open** (no key). Query param `model` (default `tokay-kk-v1`).
-
-```bash
-curl "https://geko--tokay-serve-web.modal.run/v1/voices?model=tokay-kk-v1"
-```
-
-```json
-{
-  "model": "tokay-kk-v1",
-  "voices": [
-    {
-      "name": "Aigerim",
-      "gender": "female",
-      "style": "Warm, professional",
-      "best_for": "Reception, customer support"
-    }
-  ]
-}
-```
-
-## GET /health
-
-Service status. **Open** (no key).
-
-```bash
-curl https://geko--tokay-serve-web.modal.run/health
-```
-
-```json
-{ "status": "ok", "models": ["tokay-kk-v1"] }
-```
+<CardGroup cols={2}>
+  <Card title="POST /v1/tts" icon="waveform-lines" href="/api-reference/speech/synthesize-speech">
+    Synthesize text → WAV.
+  </Card>
+  <Card title="POST /v1/tts/stream" icon="bolt" href="/api-reference/speech/stream-speech-sentence-by-sentence">
+    Sentence-by-sentence streaming.
+  </Card>
+  <Card title="POST /v1/audio/speech" icon="plug" href="/api-reference/speech/openai-compatible-speech">
+    OpenAI-compatible alias.
+  </Card>
+  <Card title="GET /v1/voices" icon="list" href="/api-reference/catalog/list-voices">
+    The voice catalog (open).
+  </Card>
+</CardGroup>
 
 ## Errors
 
@@ -161,12 +53,12 @@ Errors come back as JSON with a `detail` string and the matching HTTP status:
 { "detail": "out of credits — top up in the geko console" }
 ```
 
-| Status | Meaning |
-| --- | --- |
-| `400` | Bad request — missing `text`, malformed body, or an invalid value. |
-| `401` | Missing or invalid API key. |
-| `404` | Unknown model or voice. |
-| `429` | Out of credits. |
-| `503` | Auth backend temporarily unavailable (transient — retry). |
+| Status | Meaning | Retried? |
+| --- | --- | --- |
+| `400` | Bad request — missing `text`, malformed body, or an invalid value. | No |
+| `401` | Missing or invalid API key. | No |
+| `404` | Unknown model or voice. | No |
+| `429` | Out of credits — top up in the console. | No |
+| `503` | Auth backend temporarily unavailable (transient). | Yes |
 
-See [Errors & retries](/sdk/errors) for retry guidance.
+See [Errors & retries](/sdk/errors) for the SDK's error types and retry behavior.

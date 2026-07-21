@@ -49,3 +49,20 @@ Keys are metered per organization. If you run out of credits, `POST /v1/tts` ret
 ## Rotating a key
 
 Revoke a key in the console and issue a new one. Revocation takes effect within a short caching window (the API caches key lookups for about 30 seconds).
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="bolt" href="/quickstart">
+    Make your first authenticated request in minutes.
+  </Card>
+  <Card title="TypeScript SDK" icon="code" href="/sdk/typescript">
+    The typed client that reads your key from the environment.
+  </Card>
+  <Card title="Errors & retries" icon="shield-check" href="/sdk/errors">
+    Handle 401, 429, and transient failures cleanly.
+  </Card>
+  <Card title="Billing & credits" icon="credit-card" href="/billing">
+    How usage is metered and what running out looks like.
+  </Card>
+</CardGroup>

@@ -35,6 +35,18 @@ description: "From zero to your first hello.wav in three steps."
     await writeFile("hello.wav", Buffer.from(audio));
     ```
 
+    ```python Python
+    import os, requests
+
+    res = requests.post(
+        "https://geko--tokay-serve-web.modal.run/v1/tts",
+        headers={"Authorization": f"Bearer {os.environ['GEKO_API_KEY']}"},
+        json={"text": "Сәлеметсіз бе!", "voice": "Aigerim"},
+    )
+    res.raise_for_status()
+    open("hello.wav", "wb").write(res.content)
+    ```
+
     ```bash curl
     curl -X POST https://geko--tokay-serve-web.modal.run/v1/tts \
       -H "Authorization: Bearer $GEKO_API_KEY" \

@@ -34,3 +34,17 @@ const cost = (text: string) => text.length / 25_000; // USD
 <Note>
   Streaming (`tts.stream`) and the OpenAI-compatible endpoint bill identically to `tts.create` — by input characters, once per request. Pricing is subject to change; the [console](https://app.geko.sh) always shows the current rate.
 </Note>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Limits & constraints" icon="gauge-high" href="/limits">
+    Request limits, rate limits, and cold starts.
+  </Card>
+  <Card title="Errors & retries" icon="shield-check" href="/sdk/errors">
+    How the SDK surfaces a 429 out-of-credits response.
+  </Card>
+  <Card title="FAQ & troubleshooting" icon="book-open" href="/faq">
+    Common questions about usage and metering.
+  </Card>
+</CardGroup>

@@ -3,24 +3,34 @@ title: "Voices"
 description: "The six Kazakh voices of tokay-kk-v1 — and how to audition them."
 ---
 
-Model `tokay-kk-v1` (Kazakh) ships with **six** named voices — three female, three male. Pass a voice by `name`:
+Model `tokay-kk-v1` (Kazakh) ships with **six** named voices — three female, three male. Pass one by `name`; omit `voice` and you get the default, **Aigerim**.
 
 ```ts
 await geko.tts.create({ text: "Сәлем", voice: "Aigerim" });
 ```
 
-If you omit `voice`, the model's default (**Aigerim**) is used.
+## The catalog
 
-## Catalog
-
-| Voice | Gender | Style | Best for |
-| --- | --- | --- | --- |
-| **Aigerim** _(default)_ | female | Warm, professional | Reception, customer support |
-| **Arman** | male | Confident, professional | Support, IVR, announcements |
-| **Ainur** | female | Bright, energetic | Promos, upbeat greetings |
-| **Aruzhan** | female | Youthful, clear | Support, notifications |
-| **Sanzhar** | male | Neutral, precise | Information, readouts, IVR |
-| **Yerlan** | male | Calm, warm | Explanations, long-form |
+<CardGroup cols={2}>
+  <Card title="Aigerim" icon="waveform-lines">
+    **female · warm, professional** — the default. Reception and customer support.
+  </Card>
+  <Card title="Arman" icon="waveform-lines">
+    **male · confident, professional** — support, IVR, announcements.
+  </Card>
+  <Card title="Ainur" icon="waveform-lines">
+    **female · bright, energetic** — promos and upbeat greetings.
+  </Card>
+  <Card title="Aruzhan" icon="waveform-lines">
+    **female · youthful, clear** — support and notifications.
+  </Card>
+  <Card title="Sanzhar" icon="waveform-lines">
+    **male · neutral, precise** — information, readouts, IVR.
+  </Card>
+  <Card title="Yerlan" icon="waveform-lines">
+    **male · calm, warm** — explanations and long-form.
+  </Card>
+</CardGroup>
 
 ## Always fetch the live list
 
@@ -28,17 +38,22 @@ If you omit `voice`, the model's default (**Aigerim**) is used.
   The catalog grows and changes — **don't hard-code it.** Pull it at runtime (no API key needed).
 </Note>
 
-```ts
+<CodeGroup>
+```ts SDK
 const { voices } = await geko.tts.voices("tokay-kk-v1");
+// [{ name, gender, style, best_for }, ...]
 ```
 
-```bash
+```bash CLI
 gekoai voices --json
-# or
+```
+
+```bash curl
 curl "https://geko--tokay-serve-web.modal.run/v1/voices?model=tokay-kk-v1"
 ```
+</CodeGroup>
 
-Each entry has `name`, `gender`, `style`, and `best_for` — enough to build a voice picker or route by use case.
+Each entry has `name`, `gender`, `style`, and `best_for` — enough to build a voice picker or route by use case. See [`GET /v1/voices`](/api-reference/catalog/list-voices).
 
 ## Auditioning
 
@@ -49,3 +64,20 @@ for v in Aigerim Arman Ainur Aruzhan Sanzhar Yerlan; do
   gekoai say "Сәлеметсіз бе! Менің атым $v." --voice "$v" -o "sample_$v.wav"
 done
 ```
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="bolt" href="/quickstart">
+    From an API key to your first `hello.wav`.
+  </Card>
+  <Card title="Streaming audio" icon="waveform-lines" href="/guides/streaming">
+    Play a long reply sentence-by-sentence.
+  </Card>
+  <Card title="Latency & quality" icon="gauge-high" href="/guides/latency">
+    Tune `nfe` for speed or fidelity.
+  </Card>
+  <Card title="API reference" icon="server" href="/api/reference">
+    Every endpoint, with a live playground.
+  </Card>
+</CardGroup>

@@ -33,38 +33,65 @@
     "href": "https://geko.sh"
   },
   "favicon": "/images/geko-icon.png",
+  "contextual": {
+    "options": ["copy", "view", "chatgpt", "claude"]
+  },
+  "feedback": {
+    "thumbsRating": true,
+    "suggestEdit": true
+  },
   "navigation": {
-    "groups": [
+    "tabs": [
       {
-        "group": "get started",
-        "icon": "rocket",
-        "pages": ["index", "quickstart", "authentication"]
-      },
-      {
-        "group": "sdk",
-        "icon": "code",
-        "pages": ["sdk/typescript", "sdk/cli", "sdk/errors"]
-      },
-      {
-        "group": "api reference",
-        "icon": "server",
-        "pages": ["api/reference"]
-      },
-      {
-        "group": "guides",
-        "icon": "book-open",
-        "pages": [
-          "guides/playing-audio",
-          "guides/frameworks",
-          "guides/openai",
-          "guides/latency",
-          "guides/normalization"
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "get started",
+            "icon": "rocket",
+            "pages": ["index", "quickstart", "authentication"]
+          },
+          {
+            "group": "guides",
+            "icon": "book-open",
+            "pages": [
+              "guides/playing-audio",
+              "guides/frameworks",
+              "guides/streaming",
+              "guides/voice-agents",
+              "guides/openai",
+              "guides/latency",
+              "guides/normalization"
+            ]
+          },
+          {
+            "group": "sdk",
+            "icon": "code",
+            "pages": ["sdk/typescript", "sdk/cli", "sdk/errors"]
+          },
+          {
+            "group": "reference",
+            "icon": "list",
+            "pages": ["voices", "billing", "limits", "faq", "changelog", "roadmap"]
+          }
         ]
       },
       {
-        "group": "reference",
-        "icon": "list",
-        "pages": ["voices", "billing", "limits", "faq", "changelog", "roadmap"]
+        "tab": "API reference",
+        "groups": [
+          {
+            "group": "API reference",
+            "openapi": "openapi.json",
+            "pages": [
+              "api/reference",
+              "POST /v1/tts",
+              "POST /v1/tts/stream",
+              "POST /v1/audio/speech",
+              "GET /v1/models",
+              "GET /v1/voices",
+              "GET /health"
+            ]
+          }
+        ]
       }
     ]
   },

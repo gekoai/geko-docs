@@ -87,3 +87,20 @@ A user-triggered `abort()` propagates as-is (it is **not** retried or wrapped). 
 <Warning>
   A `tts.create()` call that times out is retried by default. In the rare case a retry re-triggers a synthesis that had already succeeded server-side, you could be billed twice. If you need strict once-only semantics, set `maxRetries: 0`.
 </Warning>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Authentication" icon="key" href="/authentication">
+    Fix a 401 by creating or rotating a key.
+  </Card>
+  <Card title="Limits & constraints" icon="gauge-high" href="/limits">
+    Request limits, output format, and cold starts.
+  </Card>
+  <Card title="Billing & credits" icon="credit-card" href="/billing">
+    Why 429 means out of credits, and how to top up.
+  </Card>
+  <Card title="FAQ & troubleshooting" icon="book-open" href="/faq">
+    Common status codes and quick fixes.
+  </Card>
+</CardGroup>

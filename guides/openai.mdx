@@ -55,3 +55,20 @@ res.stream_to_file("hello.wav")
 <Note>
   This endpoint is a thin compatibility shim over the same engine as [`POST /v1/tts`](/api/reference) — handy for dropping Geko into tools that already speak OpenAI.
 </Note>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="TypeScript SDK" icon="code" href="/sdk/typescript">
+    The native client with streaming and the full typed surface.
+  </Card>
+  <Card title="API reference" icon="server" href="/api/reference">
+    The raw HTTP endpoints behind the compatibility shim.
+  </Card>
+  <Card title="Playing & saving audio" icon="volume-high" href="/guides/playing-audio">
+    Turn the response bytes into files or playback.
+  </Card>
+  <Card title="Pick a voice" icon="waveform-lines" href="/voices">
+    Geko voice names to pass as `voice`.
+  </Card>
+</CardGroup>

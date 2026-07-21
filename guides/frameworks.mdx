@@ -86,4 +86,4 @@ app.listen(3000);
 </Note>
 
 - **Reuse the client:** construct `new Geko(...)` once at module scope, not per request.
-- **Don't stream half-built audio:** the API returns the complete WAV in one response today (streaming is on the [roadmap](/roadmap)).
+- **Long text? stream it.** For paragraphs or assistant replies, `geko.tts.stream()` starts audio after the first sentence instead of the full render — proxy the chunks straight through. See [Streaming audio](/guides/streaming).

@@ -32,3 +32,20 @@ There is **no hard per-second rate limit** today — throughput is bounded by yo
 ## Cold starts
 
 The GPU backend **scales to zero** when idle to save cost, so the **first request after an idle period** can take tens of seconds; subsequent calls (within a few minutes) are fast. The SDK's default **120 s** timeout is sized for this — see [Latency & quality](/guides/latency) for tuning and keep-warm tips.
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Latency & quality" icon="gauge-high" href="/guides/latency">
+    Tune the `nfe` dial and handle cold starts.
+  </Card>
+  <Card title="Streaming" icon="waveform-lines" href="/guides/streaming">
+    Chunk long inputs to start playback sooner.
+  </Card>
+  <Card title="Billing & credits" icon="credit-card" href="/billing">
+    Throughput is bounded by your credit balance.
+  </Card>
+  <Card title="Errors & retries" icon="shield-check" href="/sdk/errors">
+    What happens when a request exceeds a limit.
+  </Card>
+</CardGroup>

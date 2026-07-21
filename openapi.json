@@ -1,0 +1,353 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "geko API",
+    "version": "1.0.0",
+    "description": "Text-to-speech for Kazakh and beyond. Send text and a voice name; get back WAV audio (24 kHz, 16-bit PCM, mono). A thin, familiar HTTP API — call it from any language, or use the typed SDK and CLI.\n\nThe catalog endpoints (`/v1/models`, `/v1/voices`, `/health`) are open. Synthesis endpoints require a bearer key — create one in the [console](https://app.geko.sh)."
+  },
+  "servers": [
+    { "url": "https://geko--tokay-serve-web.modal.run" }
+  ],
+  "security": [
+    { "bearerAuth": [] }
+  ],
+  "paths": {
+    "/v1/tts": {
+      "post": {
+        "operationId": "createSpeech",
+        "summary": "Synthesize speech",
+        "description": "Synthesize text into speech. Returns raw **WAV** bytes (`audio/wav`, 24 kHz, 16-bit PCM, mono). The `X-Tokay-Chars` response header reports the billed character count.",
+        "tags": ["Speech"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/TtsRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "WAV audio.",
+            "headers": {
+              "X-Tokay-Chars": {
+                "description": "Billed character count for this request.",
+                "schema": { "type": "integer" }
+              }
+            },
+            "content": {
+              "audio/wav": { "schema": { "type": "string", "format": "binary" } }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "429": { "$ref": "#/components/responses/OutOfCredits" },
+          "503": { "$ref": "#/components/responses/Unavailable" }
+        },
+        "x-codeSamples": [
+          {
+            "lang": "TypeScript",
+            "label": "SDK",
+            "source": "import { Geko } from \"@gekoai/sdk\";\nimport { writeFile } from \"node:fs/promises\";\n\nconst geko = new Geko({ apiKey: process.env.GEKO_API_KEY });\n\nconst audio = await geko.tts.create({\n  text: \"Сәлеметсіз бе! Тапсырыс нөмірі 152.\",\n  voice: \"Aigerim\",\n});\n\nawait writeFile(\"hello.wav\", Buffer.from(audio));"
+          },
+          {
+            "lang": "Python",
+            "label": "requests",
+            "source": "import os, requests\n\nres = requests.post(\n    \"https://geko--tokay-serve-web.modal.run/v1/tts\",\n    headers={\"Authorization\": f\"Bearer {os.environ['GEKO_API_KEY']}\"},\n    json={\"text\": \"Сәлеметсіз бе! Тапсырыс нөмірі 152.\", \"voice\": \"Aigerim\"},\n)\nres.raise_for_status()\nwith open(\"hello.wav\", \"wb\") as f:\n    f.write(res.content)"
+          }
+        ]
+      }
+    },
+    "/v1/tts/stream": {
+      "post": {
+        "operationId": "streamSpeech",
+        "summary": "Stream speech sentence-by-sentence",
+        "description": "Same request body as `POST /v1/tts`, but the response is delivered as each sentence finishes synthesizing — lower time-to-first-audio on long text. Auth and metering are identical to `/v1/tts`.\n\nThe body is a sequence of **frames**: a 4-byte big-endian length, followed by that many bytes of one complete WAV. Read a length, read that many bytes (one playable WAV chunk), repeat until the stream closes. The `X-Tokay-Stream: wav-frames-v1` header identifies the framing. Most callers should use the SDK's `geko.tts.stream()`, which wraps this as an async iterable — see the [streaming guide](/guides/streaming).",
+        "tags": ["Speech"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/TtsRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "A stream of length-prefixed WAV frames (`wav-frames-v1`).",
+            "headers": {
+              "X-Tokay-Stream": {
+                "description": "Framing identifier. Always `wav-frames-v1`.",
+                "schema": { "type": "string" }
+              }
+            },
+            "content": {
+              "application/octet-stream": { "schema": { "type": "string", "format": "binary" } }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "429": { "$ref": "#/components/responses/OutOfCredits" },
+          "503": { "$ref": "#/components/responses/Unavailable" }
+        },
+        "x-codeSamples": [
+          {
+            "lang": "TypeScript",
+            "label": "SDK",
+            "source": "import { Geko } from \"@gekoai/sdk\";\n\nconst geko = new Geko({ apiKey: process.env.GEKO_API_KEY });\n\nfor await (const wav of geko.tts.stream({\n  text: longText,\n  voice: \"Aigerim\",\n})) {\n  // each `wav` is a standalone, playable WAV chunk\n  play(wav);\n}"
+          }
+        ]
+      }
+    },
+    "/v1/audio/speech": {
+      "post": {
+        "operationId": "createSpeechOpenAICompatible",
+        "summary": "OpenAI-compatible speech",
+        "description": "OpenAI-compatible alias — point the OpenAI SDK at geko by swapping the base URL and model. Maps OpenAI's request shape onto the Tokay engine. See the [OpenAI compatibility guide](/guides/openai).",
+        "tags": ["Speech"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/SpeechRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "WAV audio (or raw PCM when `response_format` is `pcm`).",
+            "content": {
+              "audio/wav": { "schema": { "type": "string", "format": "binary" } }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "429": { "$ref": "#/components/responses/OutOfCredits" }
+        },
+        "x-codeSamples": [
+          {
+            "lang": "Python",
+            "label": "openai",
+            "source": "from openai import OpenAI\n\nclient = OpenAI(\n    base_url=\"https://geko--tokay-serve-web.modal.run/v1\",\n    api_key=os.environ[\"GEKO_API_KEY\"],\n)\n\nres = client.audio.speech.create(\n    model=\"tts-1\",\n    voice=\"Aigerim\",\n    input=\"Сәлеметсіз бе!\",\n    response_format=\"wav\",\n)\nres.write_to_file(\"hello.wav\")"
+          }
+        ]
+      }
+    },
+    "/v1/models": {
+      "get": {
+        "operationId": "listModels",
+        "summary": "List models",
+        "description": "List the models on the platform and their voices. **Open** — no API key required.",
+        "tags": ["Catalog"],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "The model catalog.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ModelsResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/voices": {
+      "get": {
+        "operationId": "listVoices",
+        "summary": "List voices",
+        "description": "The voice catalog for a model. **Open** — no API key required.",
+        "tags": ["Catalog"],
+        "security": [],
+        "parameters": [
+          {
+            "name": "model",
+            "in": "query",
+            "required": false,
+            "description": "Model id. Defaults to `tokay-kk-v1`.",
+            "schema": { "type": "string", "default": "tokay-kk-v1" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The voice catalog for the requested model.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/VoicesResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "operationId": "health",
+        "summary": "Service status",
+        "description": "Liveness probe. **Open** — no API key required.",
+        "tags": ["Catalog"],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Service is up.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HealthResponse" }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Your geko API key (`sk-tokay-…`). Create and manage keys in the [console](https://app.geko.sh)."
+      }
+    },
+    "responses": {
+      "BadRequest": {
+        "description": "Bad request — missing `text`, malformed body, or an invalid value.",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" }, "example": { "detail": "text is required" } } }
+      },
+      "Unauthorized": {
+        "description": "Missing or invalid API key.",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" }, "example": { "detail": "invalid API key" } } }
+      },
+      "NotFound": {
+        "description": "Unknown model or voice.",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" }, "example": { "detail": "unknown voice" } } }
+      },
+      "OutOfCredits": {
+        "description": "Out of credits — top up in the console. Not retried by the SDK.",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" }, "example": { "detail": "out of credits — top up in the geko console" } } }
+      },
+      "Unavailable": {
+        "description": "Auth backend temporarily unavailable (transient — retry).",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" }, "example": { "detail": "service temporarily unavailable" } } }
+      }
+    },
+    "schemas": {
+      "TtsRequest": {
+        "type": "object",
+        "required": ["text"],
+        "properties": {
+          "text": {
+            "type": "string",
+            "description": "Text to synthesize (up to ~5000 characters).",
+            "example": "Сәлеметсіз бе! Тапсырыс нөмірі 152, сомасы 5500 ₸."
+          },
+          "model": {
+            "type": "string",
+            "default": "tokay-kk-v1",
+            "description": "Model id."
+          },
+          "voice": {
+            "type": "string",
+            "default": "Aigerim",
+            "description": "Voice name from `GET /v1/voices`. Defaults to the model's default voice."
+          },
+          "speed": {
+            "type": "number",
+            "default": 1.0,
+            "minimum": 0.5,
+            "maximum": 2,
+            "description": "Speed multiplier."
+          },
+          "nfe": {
+            "type": "integer",
+            "default": 32,
+            "description": "Diffusion steps: 16 fast, 32 quality."
+          },
+          "normalize": {
+            "type": "boolean",
+            "default": true,
+            "description": "Expand numbers, currency, and dates into spoken Kazakh."
+          }
+        }
+      },
+      "SpeechRequest": {
+        "type": "object",
+        "required": ["input"],
+        "properties": {
+          "input": {
+            "type": "string",
+            "description": "Text to synthesize.",
+            "example": "Сәлеметсіз бе!"
+          },
+          "model": {
+            "type": "string",
+            "default": "tokay-kk-v1",
+            "description": "OpenAI ids (`tts-1`, `tts-1-hd`, `gpt-4o-mini-tts`) are accepted and mapped to the default."
+          },
+          "voice": {
+            "type": "string",
+            "default": "Aigerim",
+            "description": "Voice name."
+          },
+          "response_format": {
+            "type": "string",
+            "default": "wav",
+            "enum": ["wav", "pcm"],
+            "description": "`wav` or `pcm` (raw 16-bit PCM @ 24 kHz). `mp3`/`opus`/`aac`/`flac` return 400 (not transcoded yet)."
+          },
+          "speed": {
+            "type": "number",
+            "default": 1.0,
+            "description": "Speed multiplier."
+          }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "detail": { "type": "string", "description": "Human-readable error message." }
+        }
+      },
+      "Model": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "example": "tokay-kk-v1" },
+          "lang": { "type": "string", "example": "kk" },
+          "sample_rate": { "type": "integer", "example": 24000 },
+          "voices": { "type": "array", "items": { "type": "string" }, "example": ["Aigerim", "Arman", "Ainur", "Aruzhan", "Sanzhar", "Yerlan"] },
+          "default_voice": { "type": "string", "example": "Aigerim" }
+        }
+      },
+      "ModelsResponse": {
+        "type": "object",
+        "properties": {
+          "data": { "type": "array", "items": { "$ref": "#/components/schemas/Model" } }
+        }
+      },
+      "Voice": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "example": "Aigerim" },
+          "gender": { "type": "string", "nullable": true, "example": "female" },
+          "style": { "type": "string", "nullable": true, "example": "Warm, professional" },
+          "best_for": { "type": "string", "nullable": true, "example": "Reception, customer support" }
+        }
+      },
+      "VoicesResponse": {
+        "type": "object",
+        "properties": {
+          "model": { "type": "string", "example": "tokay-kk-v1" },
+          "voices": { "type": "array", "items": { "$ref": "#/components/schemas/Voice" } }
+        }
+      },
+      "HealthResponse": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "string", "example": "ok" },
+          "models": { "type": "array", "items": { "type": "string" }, "example": ["tokay-kk-v1"] }
+        }
+      }
+    }
+  }
+}

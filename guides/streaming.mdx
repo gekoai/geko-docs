@@ -1,0 +1,149 @@
+---
+title: "Streaming audio"
+description: "Start playing sentence one while the rest still synthesizes."
+---
+
+On long text, waiting for the whole clip before you hear anything is the slow path. **Streaming** hands you audio one sentence at a time: play sentence 1 while sentence 2 is still being synthesized, so time-to-first-audio drops from "the whole thing" to "the first sentence."
+
+Each chunk is a **complete, independently playable WAV** (24 kHz, 16-bit PCM, mono) — the same format as [`tts.create()`](/sdk/typescript), just delivered piece by piece.
+
+## When to stream
+
+| Situation | Use |
+| --- | --- |
+| Short text (a prompt, a confirmation, a label) | [`tts.create()`](/sdk/typescript) — one WAV, done. |
+| Long or interactive text (paragraphs, an assistant reply, a call) | `tts.stream()` — start playback after the first sentence. |
+
+Streaming doesn't make total synthesis faster; it makes the **first** audio arrive sooner. For short inputs there's no first-sentence advantage to win, so `create()` is simpler.
+
+## SDK — the async iterable
+
+`geko.tts.stream(params)` takes the same params as `create()` and returns an async iterable of WAV `ArrayBuffer`s, one per sentence chunk:
+
+```ts
+for await (const wav of geko.tts.stream({ text: longText, voice: "Aigerim" })) {
+  // each `wav` is a standalone WAV chunk — play or buffer it as it arrives
+  console.log(`chunk: ${wav.byteLength} bytes`);
+}
+```
+
+Play chunks as they land (queue them behind the one that's currently playing) and the listener hears continuous speech that started ~1 sentence in rather than after the full render.
+
+<Warning>
+  **Streams are not retried.** A partial stream can't be replayed, so unlike `tts.create()` there's no automatic retry on a mid-stream failure. Bound the whole stream with a per-call `timeout`, and cancel with an `AbortSignal` — see [Errors & retries](/sdk/errors).
+</Warning>
+
+## Cancelling a stream
+
+Pass a `signal` to stop synthesis you no longer need (the user interrupted, navigated away, started a new request):
+
+```ts
+const controller = new AbortController();
+
+const run = (async () => {
+  for await (const wav of geko.tts.stream({
+    text: longText,
+    voice: "Aigerim",
+    signal: controller.signal,
+    timeout: 60_000, // bound the entire stream, not one chunk
+  })) {
+    play(wav);
+  }
+})();
+
+// later — user hits stop:
+controller.abort();
+```
+
+`abort()` propagates as-is; it is not retried or wrapped. A per-call `timeout` bounds the full stream end-to-end.
+
+## The raw HTTP protocol
+
+Non-JS callers hit `POST /v1/tts/stream` directly. Same JSON body as [`POST /v1/tts`](/api/reference), same auth and metering — only the response shape differs:
+
+- `Content-Type: application/octet-stream`
+- Header `X-Tokay-Stream: wav-frames-v1`
+- Body is a sequence of **frames**. Each frame is a **4-byte big-endian length**, followed by that many bytes of one complete WAV.
+
+Read a length, read that many bytes (that's one playable WAV chunk), repeat until the stream closes.
+
+<CodeGroup>
+```ts SDK (TypeScript)
+import { Geko } from "@gekoai/sdk";
+
+const geko = new Geko({ apiKey: process.env.GEKO_API_KEY });
+
+const longText =
+  "Сәлеметсіз бе! Бүгінгі кездесу сағат ондаға белгіленді. " +
+  "Егер уақыт сізге ыңғайсыз болса, маған хабарлаңыз.";
+
+for await (const wav of geko.tts.stream({ text: longText, voice: "Aigerim" })) {
+  // hand each WAV chunk to your player as it arrives
+  play(wav);
+}
+```
+
+```python Python (requests)
+import os, struct, requests
+
+url = "https://geko--tokay-serve-web.modal.run/v1/tts/stream"
+headers = {
+    "Authorization": f"Bearer {os.environ['GEKO_API_KEY']}",
+    "Content-Type": "application/json",
+}
+body = {
+    "text": (
+        "Сәлеметсіз бе! Бүгінгі кездесу сағат ондаға белгіленді. "
+        "Егер уақыт сізге ыңғайсыз болса, маған хабарлаңыз."
+    ),
+    "voice": "Aigerim",
+}
+
+with requests.post(url, headers=headers, json=body, stream=True) as res:
+    res.raise_for_status()
+    raw = res.raw  # frames: 4-byte big-endian length, then that many WAV bytes
+
+    def read_exactly(n: int) -> bytes | None:
+        buf = b""
+        while len(buf) < n:
+            part = raw.read(n - len(buf))
+            if not part:
+                return None  # stream closed
+            buf += part
+        return buf
+
+    i = 0
+    while True:
+        header = read_exactly(4)
+        if header is None:
+            break  # done
+        (length,) = struct.unpack(">I", header)  # big-endian uint32
+        wav = read_exactly(length)
+        if wav is None:
+            break  # truncated stream
+        with open(f"chunk_{i}.wav", "wb") as f:
+            f.write(wav)  # each chunk is a complete, playable WAV
+        i += 1
+```
+</CodeGroup>
+
+<Note>
+  The non-streaming `POST /v1/tts` still returns the whole `audio/wav` in one response, with the billed character count in the `X-Tokay-Chars` header. `/v1/tts/stream` bills identically — streaming changes delivery, not price.
+</Note>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Voice agents" icon="phone" href="/guides/voice-agents">
+    Pipe an LLM's reply into streaming TTS for low-latency speech.
+  </Card>
+  <Card title="Playing & saving audio" icon="volume-high" href="/guides/playing-audio">
+    Turn each WAV chunk into playback, files, or other formats.
+  </Card>
+  <Card title="Latency & quality" icon="gauge-high" href="/guides/latency">
+    Drop `nfe` to 16 and dodge cold starts for faster audio.
+  </Card>
+  <Card title="Errors & retries" icon="shield-check" href="/sdk/errors">
+    Why streams aren't retried, and how to bound them.
+  </Card>
+</CardGroup>

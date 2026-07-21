@@ -70,3 +70,20 @@ For Twilio / SIP you'll want 8 kHz µ-law. Until it's a native output option, tr
 ```bash
 ffmpeg -i hello.wav -ar 8000 -ac 1 -f mulaw hello.ulaw
 ```
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Streaming" icon="waveform-lines" href="/guides/streaming">
+    Play WAV chunks as they arrive instead of waiting.
+  </Card>
+  <Card title="Use it in your app" icon="react" href="/guides/frameworks">
+    Proxy synthesis through your own server for the browser.
+  </Card>
+  <Card title="Voice agents" icon="phone" href="/guides/voice-agents">
+    Feed audio into a real-time voice loop.
+  </Card>
+  <Card title="Limits & constraints" icon="gauge-high" href="/limits">
+    Output formats and how to get MP3 / µ-law.
+  </Card>
+</CardGroup>
