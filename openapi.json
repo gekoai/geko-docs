@@ -12,6 +12,142 @@
     { "bearerAuth": [] }
   ],
   "paths": {
+    "/v1/transcribe": {
+      "servers": [{ "url": "https://geko--seta-serve-transcriber-api.modal.run" }],
+      "post": {
+        "operationId": "createTranscription",
+        "summary": "Transcribe speech",
+        "description": "Transcribe Kazakh/Russian audio, including speakers who switch language mid-sentence. Send audio as a raw request body (naming the container with an `x-filename` header), as a multipart `file`, or pass `?url=` and let the server fetch it. Billed on audio duration at 2.5 credits per second, from the same credit balance as text-to-speech.",
+        "tags": ["Speech-to-text"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "url",
+            "in": "query",
+            "required": false,
+            "description": "Public URL of the audio. Use instead of sending a body.",
+            "schema": { "type": "string", "format": "uri" }
+          },
+          {
+            "name": "x-filename",
+            "in": "header",
+            "required": false,
+            "description": "Filename hint; only the extension matters, so the server knows the container. Defaults to `audio.wav`.",
+            "schema": { "type": "string", "example": "call.wav" }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/octet-stream": { "schema": { "type": "string", "format": "binary" } },
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": { "file": { "type": "string", "format": "binary" } }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The transcript, with timing and the credits charged.",
+            "headers": {
+              "X-Seta-Audio-Seconds": {
+                "description": "Duration of the submitted audio — what you were billed for.",
+                "schema": { "type": "number" }
+              },
+              "X-Seta-Credits": {
+                "description": "Credits charged for this request.",
+                "schema": { "type": "integer" }
+              },
+              "X-Seta-Model": {
+                "description": "Model that produced the transcript.",
+                "schema": { "type": "string" }
+              }
+            },
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Transcription" } }
+            }
+          },
+          "400": {
+            "description": "No audio supplied.",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+          },
+          "401": {
+            "description": "Missing or invalid API key.",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+          },
+          "413": {
+            "description": "Audio longer than 2 hours. Split it and send the parts.",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+          },
+          "429": {
+            "description": "Out of credits — top up in the console.",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+          }
+        }
+      }
+    },
+    "/v1/audio/transcriptions": {
+      "servers": [{ "url": "https://geko--seta-serve-transcriber-api.modal.run" }],
+      "post": {
+        "operationId": "createTranscriptionOpenAI",
+        "summary": "Transcribe speech (OpenAI-compatible)",
+        "description": "Drop-in replacement for OpenAI's transcription endpoint — an existing client changes only its `baseURL`. `language`, `prompt` and `temperature` are accepted and ignored: the model shares one Kazakh+Russian vocabulary, so it is never told which language to expect. `srt` and `vtt` return 400, because a character-CTC model produces no word timings.",
+        "tags": ["Speech-to-text"],
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": ["file"],
+                "properties": {
+                  "file": { "type": "string", "format": "binary", "description": "The audio to transcribe." },
+                  "model": { "type": "string", "default": "seta-kk-ru-v2" },
+                  "response_format": {
+                    "type": "string",
+                    "enum": ["json", "text", "verbose_json"],
+                    "default": "json"
+                  },
+                  "language": { "type": "string", "description": "Accepted and ignored." },
+                  "prompt": { "type": "string", "description": "Accepted and ignored." },
+                  "temperature": { "type": "number", "description": "Accepted and ignored." }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OpenAI-shaped transcription.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["text"],
+                  "properties": { "text": { "type": "string" } }
+                }
+              },
+              "text/plain": { "schema": { "type": "string" } }
+            }
+          },
+          "400": {
+            "description": "No audio, or an unsupported `response_format` (`srt`/`vtt`).",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+          },
+          "401": {
+            "description": "Missing or invalid API key.",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+          },
+          "429": {
+            "description": "Out of credits — top up in the console.",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+          }
+        }
+      }
+    },
     "/v1/tts": {
       "post": {
         "operationId": "createSpeech",
@@ -300,6 +436,51 @@
             "type": "number",
             "default": 1.0,
             "description": "Speed multiplier."
+          }
+        }
+      },
+      "Transcription": {
+        "type": "object",
+        "required": ["text", "model", "audio_seconds", "credits_charged"],
+        "properties": {
+          "text": {
+            "type": "string",
+            "description": "The transcript. Lowercase and unpunctuated — the model's vocabulary contains neither, so nothing is being stripped.",
+            "example": "сәлеметсіз бе бүгін ауа райы өте жақсы"
+          },
+          "model": { "type": "string", "example": "seta-kk-ru-v2" },
+          "audio_seconds": {
+            "type": "number",
+            "description": "Duration of the submitted audio. This is the billed quantity.",
+            "example": 2.84
+          },
+          "processing_seconds": { "type": "number", "example": 0.153 },
+          "rtf": {
+            "type": "number",
+            "nullable": true,
+            "description": "Real-time factor: processing_seconds / audio_seconds. Lower is faster.",
+            "example": 0.0539
+          },
+          "x_realtime": {
+            "type": "number",
+            "nullable": true,
+            "description": "How many times faster than real time this ran.",
+            "example": 18.5
+          },
+          "chunks": {
+            "type": "integer",
+            "description": "How many pieces the audio was split into at pause boundaries.",
+            "example": 1
+          },
+          "sample_rate_in": {
+            "type": "integer",
+            "description": "Sample rate of the submitted audio, before resampling to 16 kHz.",
+            "example": 24000
+          },
+          "credits_charged": {
+            "type": "integer",
+            "description": "Credits billed: ceil(audio_seconds × 2.5).",
+            "example": 8
           }
         }
       },

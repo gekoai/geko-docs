@@ -1,10 +1,15 @@
 ---
-title: "text-to-speech that just works"
+title: "speech, both directions"
 sidebarTitle: "overview"
-description: "send text, get natural speech in Kazakh and beyond. a thin SDK, a CLI, and a simple HTTP API."
+description: "text to natural speech, and speech to accurate text — Kazakh and Russian, on one API key. a thin SDK, a CLI, and a simple HTTP API."
 ---
 
-**Geko** turns text into natural-sounding speech. Send a string and a voice name; get back audio. It speaks **Kazakh** today (model `tokay-kk-v1`), with more languages arriving on the same endpoints, so the code you write now keeps working.
+**Geko** does speech in both directions, on **one API key** and **one balance**:
+
+- **Text-to-speech** — send a string and a voice name, get audio back. Speaks **Kazakh** today (`tokay-kk-v1`).
+- **Speech-to-text** — send audio, get text back. Recognises **Kazakh and Russian** (`seta-kk-ru-v2`), including a speaker switching language **mid-sentence**, at **8.71% WER** where Whisper large-v3 scores 44.95% on the same audio.
+
+More languages arrive on the same endpoints, so the code you write now keeps working.
 
 It's designed to feel familiar (OpenAI / ElevenLabs style): a **thin, typed SDK**, a **CLI**, and a **simple HTTP API**. Pick whichever fits.
 
@@ -12,8 +17,14 @@ It's designed to feel familiar (OpenAI / ElevenLabs style): a **thin, typed SDK*
   <Card title="Quickstart" icon="bolt" href="/quickstart">
     From an API key to your first `hello.wav` in under a minute.
   </Card>
+  <Card title="Speech-to-text" icon="microphone" href="/stt">
+    Transcribe Kazakh/Russian audio, code-switching included.
+  </Card>
   <Card title="Add it to your app" icon="plug" href="/guides/frameworks">
     A safe server-side pattern for Next.js, Express, and beyond.
+  </Card>
+  <Card title="Replace Whisper" icon="right-left" href="/stt/openai">
+    Change one line — `baseURL`. 5× more accurate on Kazakh.
   </Card>
 </CardGroup>
 
@@ -40,21 +51,25 @@ No signup code required — grab a key and run:
 
 ```bash
 export GEKO_API_KEY=sk-tokay-...
-npx @gekoai/sdk say "Сәлеметсіз бе!" --voice Aigerim -o hello.wav
+
+npx @gekoai/sdk say "Сәлеметсіз бе!" --voice Aigerim -o hello.wav   # text → speech
+npx @gekoai/sdk transcribe hello.wav                                # speech → text
 ```
 
 ## the API in a nutshell
 
-You send text + a voice; you get **WAV audio (24 kHz, 16-bit PCM, mono)**. The surface is small:
+Synthesis takes text + a voice and returns **WAV (24 kHz, 16-bit PCM, mono)**. Transcription takes audio and returns text. The surface is small:
 
 | Method | Endpoint | Auth | What it does |
 | --- | --- | --- | --- |
 | `POST` | `/v1/tts` | required | synthesize text → `audio/wav` |
 | `POST` | `/v1/tts/stream` | required | streaming synthesis (chunked) |
-| `POST` | `/v1/audio/speech` | required | OpenAI-compatible alias |
+| `POST` | `/v1/audio/speech` | required | OpenAI-compatible synthesis alias |
+| `POST` | `/v1/transcribe` | required | transcribe audio → text |
+| `POST` | `/v1/audio/transcriptions` | required | OpenAI-compatible transcription alias |
 | `GET` | `/v1/models`, `/v1/voices`, `/health` | open | catalog + status |
 
-**Base URL:** `https://geko--tokay-serve-web.modal.run`
+**Base URLs.** Text-to-speech: `https://geko--tokay-serve-web.modal.run`. Speech-to-text: `https://geko--seta-serve-transcriber-api.modal.run`. Two separately scaled GPU services — the [SDK](/sdk/typescript) hides the split, so one client and one key reach both.
 
 <CardGroup cols={2}>
   <Card title="TypeScript SDK" icon="code" href="/sdk/typescript">

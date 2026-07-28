@@ -1,0 +1,148 @@
+---
+title: "speech-to-text that handles code-switching"
+sidebarTitle: "overview"
+description: "send audio, get Kazakh and Russian text back — including speakers who switch language mid-sentence. same API key as text-to-speech."
+---
+
+**Seta** turns speech into text. Send audio, get a transcript. It recognises **Kazakh and Russian** (model `seta-kk-ru-v2`), and — unlike every general-purpose ASR — it handles a speaker **switching between them mid-sentence**, because it was never asked to pick one.
+
+Your existing key works. **One API key covers text-to-speech and speech-to-text, and both draw down the same credit balance** — nothing new to provision.
+
+<CardGroup cols={2}>
+  <Card title="Accuracy" icon="chart-line" href="/stt/accuracy">
+    8.71% WER on KSC2. Whisper large-v3 scores 44.95% on the same audio.
+  </Card>
+  <Card title="Drop-in for Whisper" icon="right-left" href="/stt/openai">
+    Change `baseURL` on your OpenAI client. That's the whole migration.
+  </Card>
+</CardGroup>
+
+## try it in one line
+
+```bash
+export GEKO_API_KEY=sk-tokay-...
+npx @gekoai/sdk transcribe call.wav
+```
+
+The transcript goes to stdout and the cost line to stderr, so `> transcript.txt` captures only the text.
+
+## from code
+
+<CodeGroup>
+```ts TypeScript
+import { Geko } from "@gekoai/sdk";
+import { readFile } from "node:fs/promises";
+
+const geko = new Geko({ apiKey: process.env.GEKO_API_KEY });
+
+const { text, audio_seconds, credits_charged } = await geko.stt.transcribe({
+  audio: await readFile("call.wav"),
+  filename: "call.wav",
+});
+
+console.log(text);                    // сәлеметсіз бе бүгін ауа райы өте жақсы
+console.log(audio_seconds, credits_charged);  // 2.84  8
+```
+
+```bash curl
+curl -X POST "https://geko--seta-serve-transcriber-api.modal.run/v1/transcribe" \
+  -H "Authorization: Bearer $GEKO_API_KEY" \
+  -H "Content-Type: application/octet-stream" \
+  -H "x-filename: call.wav" \
+  --data-binary @call.wav
+```
+
+```python Python
+import requests
+
+r = requests.post(
+    "https://geko--seta-serve-transcriber-api.modal.run/v1/transcribe",
+    headers={"Authorization": f"Bearer {KEY}", "x-filename": "call.wav"},
+    data=open("call.wav", "rb").read(),
+)
+print(r.json()["text"])
+```
+</CodeGroup>
+
+Or skip the upload entirely and let the server fetch it:
+
+```ts
+const { text } = await geko.stt.transcribe({ url: "https://example.com/call.mp3" });
+```
+
+## what comes back
+
+```json
+{
+  "text": "сәлеметсіз бе бүгін ауа райы өте жақсы",
+  "model": "seta-kk-ru-v2",
+  "audio_seconds": 2.84,
+  "processing_seconds": 0.153,
+  "rtf": 0.0539,
+  "x_realtime": 18.5,
+  "chunks": 1,
+  "sample_rate_in": 24000,
+  "credits_charged": 8
+}
+```
+
+`audio_seconds` is what you pay for. `x_realtime` is how many times faster than real time the transcription ran.
+
+<Note>
+  Transcripts are **lowercase and unpunctuated**. That is not post-processing — the model's output vocabulary contains no capitals and no punctuation, so nothing is being stripped. Punctuation and truecasing are on the [roadmap](/roadmap).
+</Note>
+
+## why there is no `language` parameter
+
+Kazakh and Russian share one 70-character output vocabulary — the full Kazakh alphabet (42 letters), the full Russian alphabet (33), and Latin `a–z`. Both languages live in the same output space, so the model never has to be told which one it is hearing, and a speaker can switch **inside a single word** without the model switching anything.
+
+This is the whole architectural bet, and it is why Seta is not built on Whisper. Whisper must be told one language per utterance, which makes genuine code-switching impossible to represent, and it scores 37–49% WER on Kazakh regardless. See [accuracy](/stt/accuracy) for the head-to-head.
+
+`language`, `prompt` and `temperature` **are** accepted on the OpenAI-compatible endpoint, and ignored, so existing clients keep working.
+
+## audio you can send
+
+| | |
+| --- | --- |
+| **Containers** | anything `ffmpeg` reads — wav, mp3, m4a, flac, ogg, opus |
+| **Sample rate** | any; resampled server-side to 16 kHz |
+| **Channels** | any; downmixed to mono |
+| **Max duration** | **2 hours** per request (longer returns `413` — split it) |
+| **Long audio** | split automatically at pauses, not mid-word |
+
+Telephony audio is fine: on simulated 8 kHz G.711 μ-law, accuracy drops only **8% relative** (8.71% → 9.41% WER), versus the 30–80% typical for models not adapted to narrowband.
+
+## what it costs
+
+| | |
+| --- | --- |
+| **Rate** | **$0.36 per hour of audio** |
+| **In credits** | 2.5 credits per audio-second — 9,000 per audio-hour |
+| **Billed on** | `audio_seconds`, rounded up, successful requests only |
+
+Same credit pool as text-to-speech. Estimate before you spend, with no request:
+
+```ts
+geko.stt.estimateCredits(3600); // 9000 credits === $0.36
+```
+
+Out of credits returns **HTTP 429** on *both* products, since it is one balance. The catalog endpoints (`/v1/models`, `/health`) are open and free.
+
+## latency and cold starts
+
+Warm, a short clip transcribes in **~0.15 s** (about 18× real time). The GPU scales to zero when idle, so the **first** request after a quiet period pays a cold start of roughly 20–30 s — and the first transcription in a fresh container costs ~1.9 s while CUDA kernels warm up. If you need predictable latency for a demo or a call window, ask us to pin a warm container.
+
+<CardGroup cols={2}>
+  <Card title="Accuracy & benchmarks" icon="chart-line" href="/stt/accuracy">
+    Per-domain WER, telephony, and comparisons against Whisper and ISSAI.
+  </Card>
+  <Card title="Billing & credits" icon="credit-card" href="/billing">
+    One balance across both products.
+  </Card>
+  <Card title="TypeScript SDK" icon="code" href="/sdk/typescript">
+    `geko.stt.transcribe(...)`, typed end to end.
+  </Card>
+  <Card title="Limits" icon="gauge-high" href="/limits">
+    Durations, rate limits, and cold starts.
+  </Card>
+</CardGroup>

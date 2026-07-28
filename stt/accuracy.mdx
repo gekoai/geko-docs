@@ -1,0 +1,124 @@
+---
+title: "accuracy & benchmarks"
+sidebarTitle: "accuracy"
+description: "measured word and character error rates for seta-kk-ru-v2, including telephony, per-domain breakdowns, and head-to-heads against Whisper and ISSAI."
+---
+
+Every number on this page was **measured by us** on the model we serve, unless explicitly marked *published*. The evaluation harness and the exact commands live in the [geko-seta](https://github.com/gekoai) repo, and the spec sheet is generated from JSON rather than typed by hand.
+
+## headline
+
+| | WER | CER |
+| --- | --- | --- |
+| **KSC2 official test** (6,733 utterances, 12.97 h) | **8.71%** | **2.63%** |
+| FLEURS Kazakh (842) | 8.39% | 4.00% |
+| FLEURS Russian (773) | 7.65% | 4.09% |
+
+95% confidence intervals: KSC2 [8.43, 8.98], FLEURS kk [7.56, 9.19], FLEURS ru [6.78, 8.59].
+
+WER is computed **corpus-level** (total errors ÷ total reference words), not as the mean of per-utterance rates — the latter flatters a model on short clips.
+
+## versus Whisper large-v3
+
+Identical audio, same harness:
+
+| test set | **seta** | Whisper large-v3 | better by |
+| --- | --- | --- | --- |
+| FLEURS kk, clean | **8.39%** | 37.20% | −77% |
+| FLEURS kk, telephony | **8.87%** | 41.79% | −79% |
+| KSC2, clean | **8.71%** | 44.95% | −81% |
+| KSC2, telephony | **9.41%** | 49.36% | −81% |
+
+Whisper also degrades *worse* under telephony conditions (+12.3% relative, against our +5.7%). **Our telephony number beats Whisper's clean number by 4.4×.**
+
+<Note>
+  The KSC2 rows for Whisper use a 1,200-clip subset for cost control. At a 5× gap, that makes no material difference.
+</Note>
+
+## versus ISSAI (published)
+
+ISSAI's KSC2 paper (Interspeech 2022, Table 2) reports a Transformer **streaming** recogniser trained on KSC2, evaluated on the same official test split we use:
+
+| domain | ISSAI *(published)* | **seta** | better by |
+| --- | --- | --- | --- |
+| crowdsourced / read | 6.3% | **4.26%** | −32% |
+| parliament | 12.7% | **6.71%** | −47% |
+| radio | 27.0% | **13.63%** | −50% |
+| podcasts | 29.9% | **14.10%** | −53% |
+| TV / talkshow | 36.8% | **12.81%** | −65% |
+| **overall** | **15.6%** | **8.71%** | **−44%** |
+
+Their system is *streaming* and ours is *offline*, and streaming inherently costs accuracy — so part of that gap is architectural, not just modelling. Even so, **our telephony-degraded 9.41% still beats their clean 15.6% by 40%.**
+
+## per domain
+
+Where the gains actually come from (KSC2 test, WER):
+
+| domain | base model | **seta (fine-tuned)** |
+| --- | --- | --- |
+| crowdsourced (read) | 4.07% | 4.26% |
+| parliament | 7.20% | **6.71%** |
+| talkshow | 14.06% | **12.81%** |
+| radio | 16.22% | **13.63%** |
+| podcasts | 15.06% | **14.10%** |
+
+Fine-tuning helps **spontaneous** speech most and costs a little on easy read speech. That trade was deliberate: conversational audio is the product.
+
+## telephony
+
+Real phone audio is narrowband and codec-crushed, so we derive a telephony copy of each test set — 300–3400 Hz band-limit → 8 kHz → **G.711 μ-law 8-bit** → back to 16 kHz:
+
+| test set | clean | telephony | relative |
+| --- | --- | --- | --- |
+| KSC2 | 8.71% | **9.41%** | +8.0% |
+| FLEURS kk | 8.39% | **8.87%** | +5.7% |
+| FLEURS ru | 7.65% | **7.98%** | +4.3% |
+
+Only 5–8% relative degradation, where an unadapted wideband model typically loses 30–80%. The likely reason is exposure: a quarter of the training clips were not natively 16 kHz, and a 300-hour chunk of the corpus is mobile-recorded.
+
+<Warning>
+  This is **simulated** telephony. It models codec and bandwidth, but not handset noise, packet loss, automatic gain control, or overlapping speakers. Treat the measured drop as a **lower bound** on real call-centre audio.
+</Warning>
+
+## code-switching
+
+KSC2 is explicitly a Kazakh–Russian **code-switching** corpus, with intra-word switching common enough that its authors defined suffix-level rules for it. Detection here is precision-first and asymmetric on purpose: Russian's alphabet is a strict subset of Kazakh's, so orthography can prove a token is Kazakh (via the exclusive letters `әғқңөұүһі`) but never that it is Russian. As a control, both monolingual Russian test sets read **0.00%** code-switched.
+
+<Note>
+  Code-switch counts include established loanwords, so read them as an **upper bound** on genuine intra-sentential switching.
+</Note>
+
+## speed and cost
+
+Measured on an A10, which is the best $/audio-hour for this model:
+
+| | |
+| --- | --- |
+| warm latency (2 s clip) | **0.151 s** |
+| real-time factor (6 s clip) | 0.0249 — **40× real time** |
+| batch 32 throughput | **377× real time** |
+| cold start, end to end | ~31 s (model load 14.8 s) |
+| our GPU cost | **$0.0385 per audio-hour** |
+
+1,000 hours of recordings ≈ 2.65 GPU-hours ≈ **$4.10**. You pay $0.36/audio-hour — see [billing](/billing).
+
+## what we have not measured
+
+Stated plainly, because it affects how much weight these numbers deserve:
+
+- **No real telephony audio yet.** Everything above is clean or simulated.
+- **No head-to-head against Google STT v2 or Azure Speech**, the only other paid engines that support Kazakh.
+- **No conversational Russian test set** — Russian is validated on read speech only, so the Russian half of the code-switching claim is weaker than the Kazakh half.
+- Not covered at all: streaming/incremental decoding, speaker diarization, punctuation, truecasing.
+
+## model card
+
+| | |
+| --- | --- |
+| **Model** | `seta-kk-ru-v2` |
+| **Base** | `ai-sage/GigaAM-Multilingual` (`large_ctc`), MIT, 585.3M params |
+| **Architecture** | Conformer encoder + character CTC, 70-character vocabulary |
+| **Languages** | Kazakh, Russian (code-switching) |
+| **Training data** | 969.67 h / 546,560 clips — 56% conversational, 23% Russian |
+| **Validation** | 4.0 h bilingual (kk 2.0 h + ru 2.0 h) |
+| **Output** | lowercase, unpunctuated |

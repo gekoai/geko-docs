@@ -3,23 +3,29 @@ title: "Billing & credits"
 description: "How Geko meters usage, what it costs, and how credits work."
 ---
 
-Geko bills by **input characters** — the text you send to synthesize. Billing is per **organization**, tracked as a credit balance.
+Geko runs on **one credit balance per organization**, and **one API key** spends it on either product — text-to-speech bills by input characters, speech-to-text by seconds of audio. There is no second balance to top up and nothing to switch between.
 
 ## Pricing
 
+| product | rate | in credits |
+| --- | --- | --- |
+| **text-to-speech** | **$0.04 per 1,000 characters** | 1 credit per character |
+| **speech-to-text** | **$0.36 per hour of audio** | 2.5 credits per audio-second (9,000/hour) |
+
 | | |
 | --- | --- |
-| **Rate** | **$0.04 per 1,000 characters** |
-| **In credits** | 25,000 characters = **$1.00** |
-| **Free on signup** | **$1.00** (25,000 characters) for every new organization |
+| **Credit value** | 25,000 credits = **$1.00** |
+| **Free on signup** | **$1.00** (25,000 credits) for every new organization |
 
-As a rough feel: **$1 ≈ 25,000 characters ≈ ~30 minutes** of Kazakh speech (Kazakh runs ~14 characters per second of audio).
+As a rough feel: **$1 ≈ 25,000 characters ≈ ~30 minutes** of synthesized Kazakh (it runs ~14 characters per second of audio), or **~2.8 hours** of transcription.
 
-Only **successful** synthesis is billed, on the **input** character count (the `X-Tokay-Chars` response header reports it). The catalog endpoints — `/v1/models`, `/v1/voices`, `/health` — are open and **free**.
+Credits are denominated in characters, which is why a transcription's `credits_charged` is a character-equivalent rather than a count of anything in the audio.
+
+Only **successful** requests are billed — synthesis on the **input** character count (`X-Tokay-Chars`), transcription on audio duration rounded up (`X-Seta-Audio-Seconds` and `X-Seta-Credits`). The catalog endpoints — `/v1/models`, `/v1/voices`, `/health` — are open and **free** on both hosts.
 
 ## Running out
 
-When your balance hits zero, synthesis requests return **HTTP 429** with a `detail` telling you you're out of credits. Top up in the [console](https://app.geko.sh). The SDK surfaces this as a `GekoError` with `status === 429` and does **not** retry it (see [Errors & retries](/sdk/errors)) — a retry can't create credits.
+When your balance hits zero, **both** products return **HTTP 429** with a `detail` telling you you're out of credits — it is one balance, so synthesis and transcription stop together. Top up in the [console](https://app.geko.sh). The SDK surfaces this as a `GekoError` with `status === 429` and does **not** retry it (see [Errors & retries](/sdk/errors)) — a retry can't create credits.
 
 ## Managing credits
 

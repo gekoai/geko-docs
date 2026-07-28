@@ -2,7 +2,7 @@
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
   "name": "geko",
-  "description": "Text-to-speech API for Kazakh — and beyond. A thin, familiar SDK and a simple HTTP API.",
+  "description": "Speech API for Kazakh — and beyond. Text-to-speech and speech-to-text on one API key, with a thin, familiar SDK and a simple HTTP API.",
   "colors": {
     "primary": "#789B33",
     "light": "#9DBF57",
@@ -51,6 +51,11 @@
             "pages": ["index", "quickstart", "authentication"]
           },
           {
+            "group": "speech-to-text",
+            "icon": "microphone",
+            "pages": ["stt/index", "stt/accuracy", "stt/openai"]
+          },
+          {
             "group": "guides",
             "icon": "book-open",
             "pages": [
@@ -83,6 +88,8 @@
             "openapi": "openapi.json",
             "pages": [
               "api/reference",
+              "POST /v1/transcribe",
+              "POST /v1/audio/transcriptions",
               "POST /v1/tts",
               "POST /v1/tts/stream",
               "POST /v1/audio/speech",

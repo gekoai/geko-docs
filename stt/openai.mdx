@@ -1,0 +1,104 @@
+---
+title: "drop-in replacement for Whisper"
+sidebarTitle: "openai compatibility"
+description: "point an existing OpenAI transcription client at geko by changing baseURL. no other code changes."
+---
+
+Seta implements OpenAI's transcription endpoint, so migrating off `whisper-1` is a **base URL change**.
+
+```
+POST /v1/audio/transcriptions
+```
+
+## the whole migration
+
+<CodeGroup>
+```ts TypeScript
+import OpenAI from "openai";
+import { createReadStream } from "node:fs";
+
+const openai = new OpenAI({
+  apiKey: process.env.GEKO_API_KEY,                                    // sk-tokay-…
+  baseURL: "https://geko--seta-serve-transcriber-api.modal.run/v1",    // ← the only change
+});
+
+const { text } = await openai.audio.transcriptions.create({
+  file: createReadStream("call.wav"),
+  model: "seta-kk-ru-v2",
+});
+```
+
+```python Python
+from openai import OpenAI
+
+client = OpenAI(
+    api_key=os.environ["GEKO_API_KEY"],
+    base_url="https://geko--seta-serve-transcriber-api.modal.run/v1",  # ← the only change
+)
+
+text = client.audio.transcriptions.create(
+    file=open("call.wav", "rb"),
+    model="seta-kk-ru-v2",
+).text
+```
+
+```bash curl
+curl -X POST "https://geko--seta-serve-transcriber-api.modal.run/v1/audio/transcriptions" \
+  -H "Authorization: Bearer $GEKO_API_KEY" \
+  -F file=@call.wav \
+  -F model=seta-kk-ru-v2
+```
+</CodeGroup>
+
+For Kazakh that swap is worth **8.71% WER instead of 44.95%** — see [accuracy](/stt/accuracy).
+
+## parameter compatibility
+
+| parameter | behaviour |
+| --- | --- |
+| `file` | **required** — the audio |
+| `model` | accepted; the endpoint serves one model, reported by `GET /v1/models` |
+| `response_format` | `json` (default), `text`, `verbose_json` |
+| `language` | **accepted and ignored** — see below |
+| `prompt` | accepted and ignored |
+| `temperature` | accepted and ignored |
+
+### why `language` is ignored
+
+Not laziness — it is the point. Kazakh and Russian share one output vocabulary, so the model is never told which language to expect and a speaker can switch mid-sentence. Forcing one language per utterance is exactly the Whisper limitation this model exists to remove, so honouring `language` would make the model *worse*. It stays accepted so existing clients don't break.
+
+### `srt` and `vtt` are refused
+
+They return **`400`** with a reason, rather than silently handing back JSON:
+
+```json
+{ "detail": "srt/vtt need word timings, which a CTC model does not produce. Use response_format=json, text or verbose_json." }
+```
+
+A character-CTC model has no word-level timestamps to emit. `verbose_json` returns an empty `segments` array for the same reason — it is not an error, there is simply nothing truthful to put there. Word timings are on the [roadmap](/roadmap).
+
+## response shapes
+
+<CodeGroup>
+```json response_format=json
+{ "text": "сәлеметсіз бе бүгін ауа райы өте жақсы" }
+```
+
+```text response_format=text
+сәлеметсіз бе бүгін ауа райы өте жақсы
+```
+
+```json response_format=verbose_json
+{
+  "task": "transcribe",
+  "language": "kk-ru",
+  "duration": 2.84,
+  "text": "сәлеметсіз бе бүгін ауа райы өте жақсы",
+  "segments": []
+}
+```
+</CodeGroup>
+
+<Note>
+  Prefer the native [`/v1/transcribe`](/stt) endpoint for new code — same auth and price, but it also returns `audio_seconds`, `credits_charged`, and real-time factor, which the OpenAI shape has no room for.
+</Note>
