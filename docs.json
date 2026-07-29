@@ -40,6 +40,14 @@
     "thumbsRating": true,
     "suggestEdit": true
   },
+  "redirects": [
+    { "source": "/voices", "destination": "/tts/voices", "permanent": true },
+    { "source": "/guides/playing-audio", "destination": "/tts/playing-audio", "permanent": true },
+    { "source": "/guides/streaming", "destination": "/tts/streaming", "permanent": true },
+    { "source": "/guides/latency", "destination": "/tts/latency", "permanent": true },
+    { "source": "/guides/normalization", "destination": "/tts/normalization", "permanent": true },
+    { "source": "/guides/openai", "destination": "/tts/openai", "permanent": true }
+  ],
   "navigation": {
     "tabs": [
       {
