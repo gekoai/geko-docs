@@ -1,13 +1,23 @@
 ---
-title: "Changelog"
-description: "Notable changes to the Geko API and SDK."
+title: "changelog"
+description: "notable changes to the Geko API and SDK."
 ---
 
 The SDK follows [semantic versioning](https://semver.org). The authoritative SDK changelog lives in [`CHANGELOG.md`](https://github.com/gekoai/geko-ts-sdk/blob/main/CHANGELOG.md).
 
+## SDK `0.4.0`
+
+- **Speech-to-text:** [`geko.stt.transcribe({ audio })`](/sdk/typescript) or `{ url }` → the transcript plus timing and the credits actually charged. Backed by `seta-kk-ru-v2`, which handles Kazakh/Russian **code-switching** at 8.71% WER on the KSC2 official test set, where Whisper large-v3 scores 44.95% on the same audio. See [accuracy](/stt/accuracy).
+- There is deliberately **no `language` parameter** — both alphabets share one 70-character output vocabulary, so the model is never told which language to expect. Transcripts are lowercase and unpunctuated because that vocabulary contains neither.
+- `geko.stt.models()` lists what the endpoint serves. `geko.stt.estimateCredits(seconds)` prices a file with no request — `ceil(seconds × 2.5)`, i.e. $0.36/audio-hour.
+- **One API key, one balance, both services.** TTS and STT are separately scaled GPU services on two hosts; the client hides that. New `sttBaseUrl` option (plus `GEKO_STT_BASE_URL` and `--stt-base-url`) if you need to point it elsewhere.
+- **CLI:** [`gekoai transcribe <file>`](/sdk/cli) and `gekoai transcribe --url <url>`. The transcript goes to stdout and the cost line to stderr, so `> transcript.txt` captures only text.
+- Audio uploads as an octet-stream rather than multipart, which keeps the body replayable — so transcriptions keep the existing retry-on-5xx behavior.
+
 ## SDK `0.3.0`
 
-- **Streaming:** [`geko.tts.stream()`](/sdk/typescript) — an async iterable yielding one WAV chunk per sentence for lower time-to-first-audio on long text.
+- **Streaming:** [`geko.tts.stream()`](/tts/streaming) — an async iterable yielding one WAV chunk per sentence for lower time-to-first-audio on long text. Consumes the framed `wav-frames-v1` protocol.
+- No retries on streams (a consumed stream can't be replayed); `AbortSignal` and per-call `timeout` still apply.
 
 ## SDK `0.2.0`
 
@@ -20,6 +30,7 @@ The SDK follows [semantic versioning](https://semver.org). The authoritative SDK
 
 ## API
 
-- Added [`POST /v1/tts/stream`](/api/reference) (sentence-level streaming) and the OpenAI-compatible [`POST /v1/audio/speech`](/guides/openai) (`wav` / `pcm`).
+- Added **speech-to-text**: [`POST /v1/transcribe`](/stt) and the OpenAI-compatible [`POST /v1/audio/transcriptions`](/stt/openai), on a separately scaled host. Same bearer key and [same credit balance](/billing) as synthesis.
+- Added [`POST /v1/tts/stream`](/tts/streaming) (sentence-level streaming) and the OpenAI-compatible [`POST /v1/audio/speech`](/tts/openai) (`wav` / `pcm`).
 - Enabled **CORS** for browser callers.
 - The core `POST /v1/tts` contract is unchanged: WAV, 24 kHz, PCM16, mono.

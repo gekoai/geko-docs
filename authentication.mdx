@@ -1,29 +1,44 @@
 ---
-title: "Authentication"
-description: "Creating and using API keys, and keeping them safe."
+title: "authentication"
+description: "one API key for both directions — creating it, using it, and keeping it safe."
 ---
 
 ## API keys
 
-`POST /v1/tts` is authenticated with a **bearer token**:
+Every billable endpoint — synthesis and transcription alike — is authenticated with a **bearer token**:
 
 ```
 Authorization: Bearer sk-tokay-...
 ```
 
+**One key covers both products.** The same `sk-tokay-…` reaches text-to-speech and speech-to-text, and both draw down [one credit balance](/billing). There is no second key to provision and nothing to switch between.
+
 Create and manage keys in the [Geko console](https://app.geko.sh). A key is shown **once** at creation — store it then; the server only keeps a hash. (Keys look like `sk-tokay-` followed by 48 hex characters.)
 
-The catalog endpoints — `/v1/models`, `/v1/voices`, `/health` — are **open** and need no key, so docs, playgrounds, and voice pickers can render without one.
+| Endpoint | Auth |
+| --- | --- |
+| `POST /v1/tts`, `/v1/tts/stream`, `/v1/audio/speech` | required |
+| `POST /v1/transcribe`, `/v1/audio/transcriptions` | required |
+| `GET /v1/models`, `/v1/voices`, `/health` | **open** — no key |
+
+The catalog endpoints are open so docs, playgrounds, and voice pickers can render without one.
+
+<Note>
+  Text-to-speech and speech-to-text are separately scaled GPU services, so they answer on **two hosts** — but on the same credentials. The [SDK](/sdk/typescript) hides the split entirely; if you're calling raw HTTP, see [the API reference](/api/reference) for which base URL serves which endpoint.
+</Note>
 
 ## With the SDK
 
-Pass the key explicitly, or let the SDK read it from the environment (`GEKO_API_KEY`, falling back to `TOKAY_API_KEY`):
+Pass the key explicitly, or let the SDK read it from the environment (`GEKO_API_KEY`, falling back to `TOKAY_API_KEY`). One client reaches both directions:
 
 ```ts
 import { Geko } from "@gekoai/sdk";
 
 const geko = new Geko({ apiKey: "sk-tokay-..." }); // explicit
 const geko2 = new Geko();                          // from GEKO_API_KEY
+
+await geko.tts.create({ text: "Сәлем", voice: "Aigerim" }); // same key
+await geko.stt.transcribe({ url: "https://example.com/call.mp3" }); // same key
 ```
 
 ```bash
@@ -40,11 +55,11 @@ export GEKO_API_KEY=sk-tokay-...
 - Expose your *own* thin endpoint to your frontend; keep the Geko key on the server.
 - Don't put the key in client-side JS, a public repo, or a mobile bundle.
 
-The API now sends permissive CORS headers, so a browser *can* call it cross-origin — but that does **not** make it safe to expose your key. Keep synthesis behind your own server. See [Use it in your app](/guides/frameworks) for a Next.js route example.
+The API sends permissive CORS headers, so a browser *can* call it cross-origin — but that does **not** make it safe to expose your key. Keep both synthesis and transcription behind your own server. See [Use it in your app](/guides/frameworks) for Next.js route examples.
 
 ## Quotas & billing
 
-Keys are metered per organization. If you run out of credits, `POST /v1/tts` returns **HTTP 429** with a `detail` explaining you're out of credits — top up in the console. The SDK surfaces this as a `GekoError` (`status === 429`) and does **not** retry it (a retry can't create credits). See [Errors & retries](/sdk/errors).
+Keys are metered per organization. If you run out of credits, **both** products return **HTTP 429** with a `detail` explaining you're out — it's one balance, so synthesis and transcription stop together. Top up in the console. The SDK surfaces this as a `GekoError` (`status === 429`) and does **not** retry it (a retry can't create credits). See [Errors & retries](/sdk/errors).
 
 ## Rotating a key
 

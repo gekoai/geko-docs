@@ -1,32 +1,53 @@
 ---
-title: "Overview"
-description: "Base URL, auth, conventions, and errors for the geko HTTP API."
+title: "overview"
+description: "base URLs, auth, conventions, and errors for the geko HTTP API."
 ---
 
 geko is a plain JSON + `audio/wav` API — call it from any language. Each endpoint has its own page with request/response schemas and a **Try it** playground you can run right here in the docs (the catalog endpoints work without a key).
 
-**Base URL**
+## Base URLs
 
-```
-https://geko--tokay-serve-web.modal.run
-```
+Text-to-speech and speech-to-text are two separately scaled GPU services, so they answer on **two hosts**:
+
+| Direction | Base URL |
+| --- | --- |
+| **Text-to-speech** | `https://geko--tokay-serve-web.modal.run` |
+| **Speech-to-text** | `https://geko--seta-serve-transcriber-api.modal.run` |
+
+<Note>
+  The [SDK](/sdk/typescript) hides this split — one client, one key, and `geko.tts.*` / `geko.stt.*` route to the right host. You only need the table above when calling raw HTTP. Each endpoint page below is pinned to its correct host, so the playgrounds work as-is.
+</Note>
 
 ## Authentication
 
-`POST /v1/tts`, `POST /v1/tts/stream`, and `POST /v1/audio/speech` require a bearer token:
+Every billable endpoint takes a bearer token — the **same key** on both hosts:
 
 ```
 Authorization: Bearer sk-tokay-...
 ```
 
-The `GET` catalog endpoints (`/v1/models`, `/v1/voices`, `/health`) are **open** — no key — so docs, playgrounds, and voice pickers render without one. Create keys in the [console](https://app.geko.sh); see [Authentication](/authentication) for handling them safely.
+| Endpoint | Host | Auth |
+| --- | --- | --- |
+| `POST /v1/tts` | TTS | required |
+| `POST /v1/tts/stream` | TTS | required |
+| `POST /v1/audio/speech` | TTS | required |
+| `POST /v1/transcribe` | STT | required |
+| `POST /v1/audio/transcriptions` | STT | required |
+| `GET /v1/models`, `/v1/voices`, `/health` | TTS | **open** |
+
+The `GET` catalog endpoints are **open** — no key — so docs, playgrounds, and voice pickers render without one. Create keys in the [console](https://app.geko.sh); see [Authentication](/authentication) for handling them safely.
+
+<Warning>
+  Both hosts serve a `GET /v1/models`, and they return **different shapes**. The TTS host lists synthesis models and their voices; the STT host lists transcription models with `languages`, `code_switching`, and `credits_per_audio_second`. The reference page below documents the TTS shape — for the STT one, use [`geko.stt.models()`](/sdk/typescript).
+</Warning>
 
 ## Conventions
 
 - **Audio out.** Synthesis returns raw **WAV** — `audio/wav`, 24 kHz, 16-bit PCM, mono. The `X-Tokay-Chars` response header reports the billed character count.
-- **JSON in.** Send `Content-Type: application/json`.
-- **Streaming.** `POST /v1/tts/stream` returns `application/octet-stream` framed as `wav-frames-v1`: a 4-byte big-endian length, then that many bytes of one complete WAV, repeated. See the [streaming guide](/guides/streaming).
-- **OpenAI-compatible.** `POST /v1/audio/speech` accepts OpenAI's request shape — see [OpenAI compatibility](/guides/openai).
+- **Audio in.** Transcription takes raw bytes as `application/octet-stream` with an `x-filename` header, or a `?url=` query param the server fetches. Responses report billing in `X-Seta-Audio-Seconds` and `X-Seta-Credits`.
+- **JSON in.** Synthesis sends `Content-Type: application/json`.
+- **Streaming.** `POST /v1/tts/stream` returns `application/octet-stream` framed as `wav-frames-v1`: a 4-byte big-endian length, then that many bytes of one complete WAV, repeated. See the [streaming guide](/tts/streaming).
+- **OpenAI-compatible.** `POST /v1/audio/speech` accepts OpenAI's speech shape ([details](/tts/openai)); `POST /v1/audio/transcriptions` accepts OpenAI's transcription shape ([details](/stt/openai)).
 
 ## Endpoints
 
@@ -37,8 +58,14 @@ The `GET` catalog endpoints (`/v1/models`, `/v1/voices`, `/health`) are **open**
   <Card title="POST /v1/tts/stream" icon="bolt" href="/api-reference/speech/stream-speech-sentence-by-sentence">
     Sentence-by-sentence streaming.
   </Card>
+  <Card title="POST /v1/transcribe" icon="microphone" href="/api-reference/speech-to-text/transcribe-speech">
+    Transcribe audio → text.
+  </Card>
+  <Card title="POST /v1/audio/transcriptions" icon="right-left" href="/api-reference/speech-to-text/transcribe-speech-openai-compatible">
+    OpenAI-compatible transcription.
+  </Card>
   <Card title="POST /v1/audio/speech" icon="plug" href="/api-reference/speech/openai-compatible-speech">
-    OpenAI-compatible alias.
+    OpenAI-compatible synthesis.
   </Card>
   <Card title="GET /v1/voices" icon="list" href="/api-reference/catalog/list-voices">
     The voice catalog (open).
@@ -58,7 +85,8 @@ Errors come back as JSON with a `detail` string and the matching HTTP status:
 | `400` | Bad request — missing `text`, malformed body, or an invalid value. | No |
 | `401` | Missing or invalid API key. | No |
 | `404` | Unknown model or voice. | No |
-| `429` | Out of credits — top up in the console. | No |
+| `413` | Audio longer than 2 hours (transcription only). | No |
+| `429` | Out of credits — top up in the console. Affects both directions. | No |
 | `503` | Auth backend temporarily unavailable (transient). | Yes |
 
 See [Errors & retries](/sdk/errors) for the SDK's error types and retry behavior.

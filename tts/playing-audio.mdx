@@ -1,6 +1,6 @@
 ---
-title: "Playing & saving audio"
-description: "Turn the WAV bytes into files, playback, and other formats."
+title: "playing & saving audio"
+description: "turn the WAV bytes into files, playback, and other formats."
 ---
 
 `tts.create()` (and `POST /v1/tts`) return raw **WAV** bytes — 24 kHz, 16-bit PCM, mono. Here's how to use them in each environment.
@@ -74,7 +74,7 @@ ffmpeg -i hello.wav -ar 8000 -ac 1 -f mulaw hello.ulaw
 ## Next steps
 
 <CardGroup cols={2}>
-  <Card title="Streaming" icon="waveform-lines" href="/guides/streaming">
+  <Card title="Streaming" icon="waveform-lines" href="/tts/streaming">
     Play WAV chunks as they arrive instead of waiting.
   </Card>
   <Card title="Use it in your app" icon="react" href="/guides/frameworks">

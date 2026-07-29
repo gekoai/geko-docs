@@ -43,12 +43,25 @@
   "navigation": {
     "tabs": [
       {
-        "tab": "Documentation",
+        "tab": "documentation",
         "groups": [
           {
             "group": "get started",
             "icon": "rocket",
             "pages": ["index", "quickstart", "authentication"]
+          },
+          {
+            "group": "text-to-speech",
+            "icon": "waveform-lines",
+            "pages": [
+              "tts/index",
+              "tts/voices",
+              "tts/playing-audio",
+              "tts/streaming",
+              "tts/latency",
+              "tts/normalization",
+              "tts/openai"
+            ]
           },
           {
             "group": "speech-to-text",
@@ -58,15 +71,7 @@
           {
             "group": "guides",
             "icon": "book-open",
-            "pages": [
-              "guides/playing-audio",
-              "guides/frameworks",
-              "guides/streaming",
-              "guides/voice-agents",
-              "guides/openai",
-              "guides/latency",
-              "guides/normalization"
-            ]
+            "pages": ["guides/frameworks", "guides/voice-agents"]
           },
           {
             "group": "sdk",
@@ -76,23 +81,23 @@
           {
             "group": "reference",
             "icon": "list",
-            "pages": ["voices", "billing", "limits", "faq", "changelog", "roadmap"]
+            "pages": ["billing", "limits", "faq", "changelog", "roadmap"]
           }
         ]
       },
       {
-        "tab": "API reference",
+        "tab": "api reference",
         "groups": [
           {
-            "group": "API reference",
+            "group": "api reference",
             "openapi": "openapi.json",
             "pages": [
               "api/reference",
-              "POST /v1/transcribe",
-              "POST /v1/audio/transcriptions",
               "POST /v1/tts",
               "POST /v1/tts/stream",
               "POST /v1/audio/speech",
+              "POST /v1/transcribe",
+              "POST /v1/audio/transcriptions",
               "GET /v1/models",
               "GET /v1/voices",
               "GET /health"

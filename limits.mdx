@@ -1,9 +1,9 @@
 ---
-title: "Limits & constraints"
-description: "Request limits, output format, rate limits, and cold starts."
+title: "limits & constraints"
+description: "request limits, formats, rate limits, and cold starts — for both directions."
 ---
 
-## Request limits
+## Text-to-speech
 
 | Limit | Value |
 | --- | --- |
@@ -11,35 +11,54 @@ description: "Request limits, output format, rate limits, and cold starts."
 | `nfe` (diffusion steps) | `8`–`64` (`16` fast, `32` quality) |
 | `speed` | `0.5`–`2.0` |
 
-For longer inputs, split on sentence/paragraph boundaries and synthesize in parallel, or use [`tts.stream()`](/sdk/typescript) which chunks for you.
+For longer inputs, split on sentence/paragraph boundaries and synthesize in parallel, or use [`tts.stream()`](/tts/streaming) which chunks for you.
 
-## Output format
+**Output format**
 
 - **`tts.create` / `/v1/tts`:** WAV — **24 kHz, 16-bit PCM, mono**.
 - **`/v1/audio/speech`:** `wav` or `pcm` (raw 16-bit PCM @ 24 kHz).
 - **`tts.stream` / `/v1/tts/stream`:** a sequence of WAV chunks (framed).
-- MP3 / Opus / µ-law are not native yet — [convert with `ffmpeg`](/guides/playing-audio) ([roadmap](/roadmap)).
+- MP3 / Opus / µ-law are not native yet — [convert with `ffmpeg`](/tts/playing-audio) ([roadmap](/roadmap)).
+
+## Speech-to-text
+
+| Limit | Value |
+| --- | --- |
+| Max duration | **2 hours** per request — longer returns `413`, so split it |
+| Containers | anything `ffmpeg` reads — wav, mp3, m4a, flac, ogg, opus |
+| Sample rate | any; resampled server-side to 16 kHz |
+| Channels | any; downmixed to mono |
+| Long audio | split automatically at pauses, not mid-word |
+
+**Output format.** JSON. Transcripts are **lowercase and unpunctuated** — the model's output vocabulary contains no capitals and no punctuation, so nothing is being stripped. Punctuation and truecasing are on the [roadmap](/roadmap).
+
+`srt` and `vtt` on the OpenAI-compatible endpoint return **`400`**, and `verbose_json` returns an empty `segments` array: a character-CTC model has no word-level timestamps to emit. See [OpenAI compatibility](/stt/openai).
+
+There is deliberately **no `language` parameter** — see [the STT overview](/stt) for why.
 
 ## Models & voices
 
-- **Model:** `tokay-kk-v1` (Kazakh) today. New models/languages appear on `GET /v1/models`.
-- **Voices:** six for `tokay-kk-v1` (`Aigerim` default). Always fetch [`/v1/voices`](/voices) rather than hard-coding.
+- **Text-to-speech:** `tokay-kk-v1` (Kazakh) with six voices (`Aigerim` default). New models/languages appear on `GET /v1/models`.
+- **Speech-to-text:** `seta-kk-ru-v2` (Kazakh + Russian, code-switching). Listed by `geko.stt.models()`.
+- Always fetch [`/v1/voices`](/tts/voices) rather than hard-coding the catalog.
 
 ## Rate limits
 
-There is **no hard per-second rate limit** today — throughput is bounded by your [credit balance](/billing). Requests run concurrently; the SDK does not serialize them. (Explicit rate limiting may arrive later.)
+There is **no hard per-second rate limit** today on either product — throughput is bounded by your [credit balance](/billing). Requests run concurrently; the SDK does not serialize them. (Explicit rate limiting may arrive later.)
 
 ## Cold starts
 
-The GPU backend **scales to zero** when idle to save cost, so the **first request after an idle period** can take tens of seconds; subsequent calls (within a few minutes) are fast. The SDK's default **120 s** timeout is sized for this — see [Latency & quality](/guides/latency) for tuning and keep-warm tips.
+Both GPU backends **scale to zero** when idle to save cost, so the **first request after an idle period** can take tens of seconds; subsequent calls (within a few minutes) are fast. The SDK's default **120 s** timeout is sized for this.
+
+The two services warm **independently** — a synthesis call does not warm the transcriber, or vice versa. If you need both hot for a live session, pre-warm both. See [Latency & quality](/tts/latency) for tuning and keep-warm tips.
 
 ## Next steps
 
 <CardGroup cols={2}>
-  <Card title="Latency & quality" icon="gauge-high" href="/guides/latency">
+  <Card title="Latency & quality" icon="gauge-high" href="/tts/latency">
     Tune the `nfe` dial and handle cold starts.
   </Card>
-  <Card title="Streaming" icon="waveform-lines" href="/guides/streaming">
+  <Card title="Streaming" icon="waveform-lines" href="/tts/streaming">
     Chunk long inputs to start playback sooner.
   </Card>
   <Card title="Billing & credits" icon="credit-card" href="/billing">

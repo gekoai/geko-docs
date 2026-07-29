@@ -1,41 +1,61 @@
 ---
-title: "Voice agents"
-description: "Use Geko as the low-latency voice for a phone or assistant loop."
+title: "voice agents"
+description: "both ends of a phone or assistant loop — transcribe the caller, speak the reply."
 ---
 
-Geko is the **speak** step of a voice agent. It's text-to-speech only — it doesn't transcribe audio and it doesn't run an LLM. You bring your own speech-to-text and your own model; Geko turns the model's text into a voice, fast enough to feel live.
+A voice agent is a loop: hear the caller, decide what to say, say it. Geko covers **both speech ends** of that loop — [speech-to-text](/stt) for the listening and [text-to-speech](/tts) for the speaking — on one API key and one balance. You bring the model in the middle.
 
 ```
-caller audio ──▶ your STT ──▶ your LLM ──▶ Geko (speak) ──▶ caller hears it
+caller audio ──▶ geko.stt.transcribe ──▶ your LLM ──▶ geko.tts.stream ──▶ caller hears it
 ```
 
-The trick to making it feel responsive is **streaming**: as the LLM produces text, pipe it into [`geko.tts.stream()`](/guides/streaming) and play each WAV chunk the moment it arrives. The caller hears speech roughly one sentence after the model starts talking, not after the whole reply is written and rendered.
+Both halves matter for Kazakh specifically: the caller may switch between Kazakh and Russian mid-sentence, which is exactly what `seta-kk-ru-v2` is built to transcribe without being told a language, and general-purpose ASR is not.
 
 ## Keep it low-latency
 
 Two settings and one habit do most of the work:
 
-- **`nfe: 16`.** Half the diffusion steps of the default `32`, noticeably faster, still very usable for a conversation. Save `32` for narration you'll ship. See [Latency & quality](/guides/latency).
+- **`nfe: 16`.** Half the diffusion steps of the default `32`, noticeably faster, still very usable for a conversation. Save `32` for narration you'll ship. See [latency & quality](/tts/latency).
 - **Stream, don't wait.** Use `tts.stream()` so playback starts on the first sentence instead of the full reply.
-- **Stay warm.** The GPU backend scales to zero when idle, so the first call after a lull can cold-start for tens of seconds. On a live line that's a dead pause. Keep a container hot with predictable traffic or a pre-warm call before a session — see [cold starts](/guides/latency).
+- **Stay warm.** Both GPU services scale to zero when idle, so the first call after a lull can cold-start for tens of seconds. On a live line that's a dead pause. Keep containers hot with predictable traffic or a pre-warm call before a session — see [cold starts](/tts/latency).
+
+Transcription itself is not the bottleneck: warm, a short utterance comes back in about **0.15 s**, roughly 18× real time.
 
 ## Choosing a voice
 
-Pick one that fits the role. `Aigerim` (warm, professional) reads well for reception and support; there are male and female alternatives (`Arman`, `Ainur`, `Aruzhan`, `Sanzhar`, `Yerlan`). Audition them on the [voices](/voices) page and set `voice` once for the whole session.
+Pick one that fits the role. `Aigerim` (warm, professional) reads well for reception and support; there are male and female alternatives (`Arman`, `Ainur`, `Aruzhan`, `Sanzhar`, `Yerlan`). Audition them on the [voices](/tts/voices) page and set `voice` once for the whole session.
 
 <Warning>
-  **Synthesis stays server-side.** Your `sk-tokay-…` key is server-only — never ship it in a browser or mobile bundle. In a voice agent, the media pipeline (telephony, the model, Geko) lives on your backend; the client only sends and plays audio. See [Use it in your app](/guides/frameworks).
+  **Both directions stay server-side.** Your `sk-tokay-…` key is server-only — never ship it in a browser or mobile bundle. In a voice agent, the media pipeline (telephony, transcription, the model, synthesis) lives on your backend; the client only sends and plays audio. See [Use it in your app](/guides/frameworks).
 </Warning>
 
-## Wiring the LLM into Geko
+## Listening: caller audio to text
 
-Here's the Geko half of the loop: take an async iterable of text as the model produces it, batch it into sentences, and stream each sentence through `tts.stream()` — yielding WAV chunks you feed straight to the caller's audio channel.
+Buffer a caller turn — your telephony transport decides where a turn ends, via silence detection, a barge-in signal, or an explicit end-of-turn — and hand the bytes to `stt.transcribe()`:
 
 ```ts
 import { Geko } from "@gekoai/sdk";
 
 const geko = new Geko({ apiKey: process.env.GEKO_API_KEY });
 
+async function hear(turnAudio: Buffer) {
+  const { text, audio_seconds } = await geko.stt.transcribe({
+    audio: turnAudio,
+    filename: "turn.wav", // only the extension matters — it tells the server the container
+  });
+  return { text, audio_seconds }; // text is lowercase and unpunctuated
+}
+```
+
+<Note>
+  Transcripts are **lowercase and unpunctuated** — the model's output vocabulary contains neither. That is usually fine for an LLM prompt, but don't feed it somewhere that expects sentence case. See [the STT overview](/stt).
+</Note>
+
+## Speaking: model text to audio
+
+Here's the synthesis half: take an async iterable of text as the model produces it, batch it into sentences, and stream each sentence through `tts.stream()` — yielding WAV chunks you feed straight to the caller's audio channel.
+
+```ts
 // Split an incoming text stream on sentence boundaries so we synthesize
 // a natural unit at a time instead of one word at a time.
 async function* sentences(chunks: AsyncIterable<string>) {
@@ -71,36 +91,42 @@ export async function* speak(
 }
 ```
 
-Drive it from your loop:
+## The whole turn
+
+Wiring both ends together, one caller turn end to end:
 
 ```ts
 const controller = new AbortController();
 
-for await (const wav of speak(llmTextStream, controller.signal)) {
-  playToCaller(wav); // your telephony / audio sink
+async function handleTurn(turnAudio: Buffer) {
+  const { text } = await hear(turnAudio);   // geko: caller audio → text
+  const llmTextStream = yourModel(text);    // yours: text → streamed reply
+  for await (const wav of speak(llmTextStream, controller.signal)) {
+    playToCaller(wav);                      // geko: reply text → audio
+  }
 }
 
 // caller starts talking over the agent (barge-in) → stop speaking:
 // controller.abort();
 ```
 
-The pieces outside Geko — the phone/SIP transport, the STT, the LLM, and turning the caller's speech into `llmTextStream` — are yours to wire up; Geko slots in as the voice at the end. Batching on sentence boundaries keeps latency low without chopping words: each unit is big enough to sound natural and small enough to start fast.
+The pieces outside Geko — the phone/SIP transport, turn detection, and the LLM — are yours to wire up. Batching on sentence boundaries keeps latency low without chopping words: each unit is big enough to sound natural and small enough to start fast.
 
 <Note>
-  Streams aren't retried, so on a live call bound each turn with a per-call `timeout` and use `signal` to cancel on barge-in or hang-up. See [Errors & retries](/sdk/errors).
+  Streams aren't retried, so on a live call bound each turn with a per-call `timeout` and use `signal` to cancel on barge-in or hang-up. Transcription *is* retried on transient failures. See [Errors & retries](/sdk/errors).
 </Note>
 
 ## Next steps
 
 <CardGroup cols={2}>
-  <Card title="Streaming audio" icon="waveform-lines" href="/guides/streaming">
+  <Card title="Streaming audio" icon="waveform-lines" href="/tts/streaming">
     The full streaming API and the raw wav-frames protocol.
   </Card>
-  <Card title="Latency & quality" icon="gauge-high" href="/guides/latency">
-    `nfe`, cold starts, and keeping the backend warm.
+  <Card title="Speech-to-text" icon="microphone" href="/stt">
+    Transcription options, response shape, and audio formats.
   </Card>
-  <Card title="Pick a voice" icon="microphone" href="/voices">
-    Audition Aigerim, Arman, and the rest of the catalog.
+  <Card title="Latency & quality" icon="gauge-high" href="/tts/latency">
+    `nfe`, cold starts, and keeping the backend warm.
   </Card>
   <Card title="Errors & retries" icon="shield-check" href="/sdk/errors">
     Timeouts, cancellation, and why streams don't retry.

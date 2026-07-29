@@ -1,0 +1,132 @@
+---
+title: "text-to-speech in natural Kazakh"
+sidebarTitle: "overview"
+description: "send text and a voice name, get WAV back. six named Kazakh voices, sentence-level streaming, and a quality dial. same API key as speech-to-text."
+---
+
+**Tokay** turns text into speech. Send a string and a voice name, get audio back. It speaks **Kazakh** (model `tokay-kk-v1`) in **six named voices**, and expands numbers, currency and dates into how a Kazakh speaker would actually say them before it synthesizes.
+
+Your existing key works. **One API key covers text-to-speech and speech-to-text, and both draw down the same credit balance** — nothing new to provision.
+
+<CardGroup cols={2}>
+  <Card title="Voices" icon="waveform-lines" href="/tts/voices">
+    Six Kazakh voices — audition them and pick by ear.
+  </Card>
+  <Card title="Drop-in for OpenAI TTS" icon="right-left" href="/tts/openai">
+    Change `baseURL` on your OpenAI client. That's the whole migration.
+  </Card>
+</CardGroup>
+
+## try it in one line
+
+```bash
+export GEKO_API_KEY=sk-tokay-...
+npx @gekoai/sdk say "Сәлеметсіз бе!" --voice Aigerim -o hello.wav
+```
+
+## from code
+
+<CodeGroup>
+```ts TypeScript
+import { Geko } from "@gekoai/sdk";
+import { writeFile } from "node:fs/promises";
+
+const geko = new Geko({ apiKey: process.env.GEKO_API_KEY });
+
+const audio = await geko.tts.create({
+  text: "Сәлеметсіз бе! Тапсырыс нөмірі 152.",
+  voice: "Aigerim",
+});
+
+await writeFile("hello.wav", Buffer.from(audio)); // ArrayBuffer of WAV bytes
+```
+
+```bash curl
+curl -X POST "https://geko--tokay-serve-web.modal.run/v1/tts" \
+  -H "Authorization: Bearer $GEKO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"text":"Сәлеметсіз бе!","voice":"Aigerim"}' \
+  --output hello.wav
+```
+
+```python Python
+import os, requests
+
+res = requests.post(
+    "https://geko--tokay-serve-web.modal.run/v1/tts",
+    headers={"Authorization": f"Bearer {os.environ['GEKO_API_KEY']}"},
+    json={"text": "Сәлеметсіз бе!", "voice": "Aigerim"},
+)
+res.raise_for_status()
+open("hello.wav", "wb").write(res.content)
+```
+</CodeGroup>
+
+Or start playback before synthesis finishes — `tts.stream()` yields one complete WAV per sentence:
+
+```ts
+for await (const wav of geko.tts.stream({ text: longText, voice: "Aigerim" })) {
+  play(wav); // each chunk is independently playable
+}
+```
+
+## what comes back
+
+Raw **WAV** bytes — **24 kHz, 16-bit PCM, mono** — not JSON. The billed character count rides along in a response header:
+
+```
+Content-Type: audio/wav
+X-Tokay-Chars: 34
+```
+
+See [playing & saving audio](/tts/playing-audio) for turning those bytes into files, playback, MP3, or telephony µ-law.
+
+## the parameters
+
+| param | default | what it does |
+| --- | --- | --- |
+| `text` | — (required) | the text to speak, up to **~5,000 characters** |
+| `voice` | `Aigerim` | a name from [`/v1/voices`](/tts/voices) |
+| `model` | `tokay-kk-v1` | model id |
+| `nfe` | `32` | diffusion steps, `8`–`64`. `16` is interactive, `32` is polished |
+| `speed` | `1.0` | playback pace, `0.5`–`2.0`. Doesn't change generation time |
+| `normalize` | `true` | expand `152`, `5500 ₸`, `15%` into spoken Kazakh words |
+
+`nfe` is the one dial worth knowing: it trades synthesis time for fidelity, and `16` is genuinely usable on a live call. See [latency & quality](/tts/latency).
+
+<Note>
+  Keep your punctuation. It guides phrasing and pauses, and a trailing `.` / `!` / `?` helps the model finish the last word cleanly (the server adds one if you omit it). More in [text normalization](/tts/normalization).
+</Note>
+
+## what it costs
+
+| | |
+| --- | --- |
+| **Rate** | **$0.04 per 1,000 input characters** |
+| **In credits** | 1 credit per character — 25,000 credits = $1.00 |
+| **Billed on** | input characters (`X-Tokay-Chars`), successful requests only |
+
+Roughly **$1 ≈ 25,000 characters ≈ 30 minutes** of speech, since Kazakh runs about 14 characters per second of audio. Streaming and the OpenAI-compatible endpoint bill identically — delivery changes, price doesn't.
+
+Same credit pool as speech-to-text, so running dry returns **HTTP 429** on both products. The catalog endpoints (`/v1/models`, `/v1/voices`, `/health`) are open and free.
+
+## latency and cold starts
+
+The GPU scales to zero when idle, so the **first** request after a quiet period pays a cold start of tens of seconds; calls within the next few minutes are fast. The SDK's default **120 s** timeout is sized for exactly this.
+
+Three things cut perceived latency: drop `nfe` to `16`, use [`tts.stream()`](/tts/streaming) so audio starts after sentence one instead of the full render, and keep a container warm with a periodic `geko.health()` if your traffic is bursty.
+
+<CardGroup cols={2}>
+  <Card title="Voices" icon="waveform-lines" href="/tts/voices">
+    All six, with style and best-for hints.
+  </Card>
+  <Card title="Streaming" icon="bolt" href="/tts/streaming">
+    Sentence-by-sentence delivery and the raw frame protocol.
+  </Card>
+  <Card title="TypeScript SDK" icon="code" href="/sdk/typescript">
+    `geko.tts.create(...)` and `stream(...)`, typed end to end.
+  </Card>
+  <Card title="Limits" icon="gauge-high" href="/limits">
+    Text length, formats, rate limits, and cold starts.
+  </Card>
+</CardGroup>

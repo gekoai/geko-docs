@@ -10,6 +10,10 @@ Seta implements OpenAI's transcription endpoint, so migrating off `whisper-1` is
 POST /v1/audio/transcriptions
 ```
 
+<Note>
+  This page is the **transcription** shim (`audio.transcriptions`). For the synthesis shim that replaces OpenAI's TTS — `audio.speech`, on a different host — see [text-to-speech → OpenAI compatibility](/tts/openai).
+</Note>
+
 ## the whole migration
 
 <CodeGroup>

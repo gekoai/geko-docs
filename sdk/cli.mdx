@@ -1,13 +1,15 @@
 ---
 title: "CLI"
-description: "Synthesize speech and browse the catalog from your terminal — no code."
+sidebarTitle: "cli"
+description: "synthesize speech, transcribe audio, and browse the catalog from your terminal — no code."
 ---
 
-`@gekoai/sdk` ships a CLI, so you can synthesize speech and browse the catalog without writing code.
+`@gekoai/sdk` ships a CLI, so you can use both directions of the API without writing code.
 
 ```bash
 # run without installing
 npx @gekoai/sdk say "Сәлеметсіз бе!" --voice Aigerim -o hello.wav
+npx @gekoai/sdk transcribe hello.wav
 
 # or install globally → `gekoai`
 npm install -g @gekoai/sdk
@@ -39,6 +41,32 @@ gekoai say "Тапсырыс нөмірі 152 дайын." --voice Arman --nfe 3
 | `--no-normalize` | Disable number/currency/date normalization. |
 | `--out, -o <file>` | Output path (default: `speech.wav`). |
 
+### `transcribe <file>`
+
+Transcribe a local audio file, or a public URL with `--url`.
+
+```bash
+gekoai transcribe call.wav
+gekoai transcribe --url https://example.com/call.mp3 --json
+```
+
+| Option | Description |
+| --- | --- |
+| `--url <url>` | Transcribe a public audio URL instead of a local file. |
+| `--stt-base-url <url>` | Override the transcription API base URL (or set `GEKO_STT_BASE_URL`). |
+| `--json` | Print the full response — timings, `audio_seconds`, `credits_charged`. |
+
+Pass a file **or** `--url`, not both. Accepts any container `ffmpeg` reads (wav, mp3, m4a, flac, ogg, opus), up to 2 hours per request.
+
+<Tip>
+  The transcript goes to **stdout** and the cost line to **stderr**, so redirecting captures only the text:
+
+  ```bash
+  gekoai transcribe call.wav > transcript.txt
+  #   2.84s audio · 8 credits · 18.5× realtime   ← stderr, still on your terminal
+  ```
+</Tip>
+
 ### `voices`
 
 List voices for a model (no key required).
@@ -50,7 +78,7 @@ gekoai voices --model tokay-kk-v1 --json
 
 ### `models`
 
-List available models (no key required).
+List available text-to-speech models (no key required).
 
 ```bash
 gekoai models
@@ -62,8 +90,8 @@ gekoai models --json
 | Flag | Description |
 | --- | --- |
 | `--api-key <key>` | Override `$GEKO_API_KEY`. |
-| `--base-url <url>` | Override the API base URL. |
-| `--json` | Machine-readable output (for `voices` / `models`). |
+| `--base-url <url>` | Override the text-to-speech base URL (or set `GEKO_BASE_URL`). |
+| `--json` | Machine-readable output. |
 | `--help, -h` | Show help. |
 | `--version, -v` | Print the SDK version. |
 
@@ -73,9 +101,9 @@ gekoai models --json
 | --- | --- |
 | `0` | Success. |
 | `1` | API error (the server responded with an error, or the request failed). |
-| `2` | Usage error (missing text, missing key, unknown command). |
+| `2` | Usage error (missing text/audio, missing key, unknown command). |
 
-## Scripting example
+## Scripting examples
 
 Generate a clip per line of a file:
 
@@ -87,6 +115,14 @@ while IFS= read -r line; do
 done < lines.txt
 ```
 
+Transcribe a directory of recordings into one transcript each:
+
+```bash
+for f in recordings/*.mp3; do
+  gekoai transcribe "$f" > "${f%.mp3}.txt"
+done
+```
+
 ## Next steps
 
 <CardGroup cols={2}>
@@ -96,7 +132,7 @@ done < lines.txt
   <Card title="Authentication" icon="key" href="/authentication">
     Create a key and set `GEKO_API_KEY`.
   </Card>
-  <Card title="Pick a voice" icon="waveform-lines" href="/voices">
+  <Card title="Pick a voice" icon="waveform-lines" href="/tts/voices">
     Browse the catalog and audition each voice.
   </Card>
   <Card title="Errors & retries" icon="shield-check" href="/sdk/errors">

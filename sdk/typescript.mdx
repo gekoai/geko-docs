@@ -1,6 +1,7 @@
 ---
 title: "TypeScript / JavaScript SDK"
-description: "@gekoai/sdk — a thin, typed, zero-dependency client for the Geko API."
+sidebarTitle: "typescript"
+description: "@gekoai/sdk — a thin, typed, zero-dependency client for both directions of the Geko API."
 ---
 
 `@gekoai/sdk` is a thin, typed client for the Geko API. Zero runtime dependencies (built on the global `fetch`), dual ESM + CommonJS, bundled type declarations. Runs on Node 20+, Deno, Bun, and browsers (via a [server-side proxy](/guides/frameworks)).
@@ -17,9 +18,16 @@ npm install @gekoai/sdk
 import { Geko } from "@gekoai/sdk";
 
 const geko = new Geko({ apiKey: process.env.GEKO_API_KEY });
+
+const audio = await geko.tts.create({ text: "Сәлем", voice: "Aigerim" }); // text → speech
+const { text } = await geko.stt.transcribe({ audio });                    // speech → text
 ```
 
-The client is **namespaced by service**. Text-to-speech lives under `geko.tts`; platform-level calls (`models`, `health`) sit on the client. Future services (speech-to-text, …) will appear as sibling namespaces — see the [roadmap](/roadmap).
+The client is **namespaced by direction**: text-to-speech under `geko.tts`, speech-to-text under `geko.stt`. Platform-level calls (`models`, `health`) sit on the client itself.
+
+<Note>
+  TTS and STT are two separately scaled GPU services, so they answer on **two hosts**. The SDK hides the split — one client, one API key, [one credit balance](/billing), and each namespace routes to the right place. You never construct a second client.
+</Note>
 
 ### Options
 
@@ -28,13 +36,18 @@ The client is **namespaced by service**. Text-to-speech lives under `geko.tts`; 
 | Option | Type | Default | Notes |
 | --- | --- | --- | --- |
 | `apiKey` | `string` | `process.env.GEKO_API_KEY` | Falls back to `TOKAY_API_KEY`. Required (directly or via env). |
-| `baseUrl` | `string` | `https://geko--tokay-serve-web.modal.run` | Override for self-hosting / proxying. |
+| `baseUrl` | `string` | `https://geko--tokay-serve-web.modal.run` | Text-to-speech host. Override for self-hosting / proxying. |
+| `sttBaseUrl` | `string` | `https://geko--seta-serve-transcriber-api.modal.run` | Speech-to-text host. Separate because the services scale separately. |
 | `fetch` | `typeof fetch` | global `fetch` | Inject a custom fetch (proxy, instrumentation, test double). |
 | `timeout` | `number` (ms) | `120000` | Per-request. `0` disables. Generous because of cold starts. |
 | `maxRetries` | `number` | `2` | Retries on transient failures. `0` disables. |
 | `headers` | `Record<string, string>` | `{}` | Extra headers on every request. |
 
-## `geko.tts.create(params)`
+Both hosts share the same credentials, timeout, and retry policy. `geko.baseUrl` and `geko.sttBaseUrl` read back the resolved values.
+
+## Text-to-speech
+
+### `geko.tts.create(params)`
 
 Synthesize speech. Returns a `Promise<ArrayBuffer>` of raw **WAV** bytes (24 kHz, PCM16, mono).
 
@@ -52,14 +65,14 @@ const audio = await geko.tts.create({
 | `model` | `string` | `tokay-kk-v1` | Model id. |
 | `voice` | `string` | model default (`Aigerim`) | Name from `geko.tts.voices()`. |
 | `speed` | `number` | `1.0` | Speed multiplier (0.5–2). |
-| `nfe` | `number` | `32` | Diffusion steps: `16` fast, `32` quality. See [latency](/guides/latency). |
-| `normalize` | `boolean` | `true` | Expand numbers/currency/dates → spoken form. See [normalization](/guides/normalization). |
+| `nfe` | `number` | `32` | Diffusion steps: `16` fast, `32` quality. See [latency](/tts/latency). |
+| `normalize` | `boolean` | `true` | Expand numbers/currency/dates → spoken form. See [normalization](/tts/normalization). |
 | `signal` | `AbortSignal` | — | Cancel the request. |
 | `timeout` | `number` (ms) | client default | Per-call timeout override. |
 
-Turn the bytes into a file or a playable blob — see [Playing & saving audio](/guides/playing-audio).
+Turn the bytes into a file or a playable blob — see [Playing & saving audio](/tts/playing-audio).
 
-## `geko.tts.stream(params)`
+### `geko.tts.stream(params)`
 
 Stream synthesis **sentence-by-sentence** to start playback sooner on long text. Returns an async iterable of WAV `ArrayBuffer`s — one per chunk, each independently playable. Same params as `create()`.
 
@@ -72,7 +85,7 @@ for await (const wav of geko.tts.stream({ text: longText, voice: "Aigerim" })) {
 
 Streams aren't retried (a partial stream can't be replayed); use `signal` to cancel and a per-call `timeout` to bound the whole stream. Under the hood it consumes the framed `wav-frames-v1` protocol from [`POST /v1/tts/stream`](/api/reference).
 
-## `geko.tts.voices(model?, options?)`
+### `geko.tts.voices(model?, options?)`
 
 List the voices for a model. Returns `{ model, voices: Voice[] }`.
 
@@ -81,18 +94,79 @@ const { voices } = await geko.tts.voices("tokay-kk-v1");
 // [{ name: "Aigerim", gender: "female", style: "Warm, professional", best_for: "Reception, customer support" }, ...]
 ```
 
-## `geko.models(options?)`
+## Speech-to-text
 
-List every model on the platform and its voices. Returns `{ data: Model[] }`.
+### `geko.stt.transcribe(params)`
+
+Transcribe audio. Returns a `Promise<Transcription>` — the transcript plus timing and the credits actually charged.
+
+Pass **exactly one** of `audio` (uploads the bytes) or `url` (the server fetches it). Passing both, or neither, throws a `TypeError` before any request goes out.
+
+<CodeGroup>
+```ts upload bytes
+import { readFile } from "node:fs/promises";
+
+const { text, audio_seconds, credits_charged } = await geko.stt.transcribe({
+  audio: await readFile("call.wav"),
+  filename: "call.wav",
+});
+```
+
+```ts fetch a URL
+const { text } = await geko.stt.transcribe({
+  url: "https://example.com/call.mp3",
+});
+```
+</CodeGroup>
+
+| Param | Type | Default | Notes |
+| --- | --- | --- | --- |
+| `audio` | `ArrayBuffer \| ArrayBufferView \| Blob` | — | The audio bytes. Any container `ffmpeg` reads. Mutually exclusive with `url`. |
+| `url` | `string` | — | Public URL the server fetches instead. Mutually exclusive with `audio`. |
+| `filename` | `string` | `audio.wav` | Filename hint — only the **extension** matters, it tells the server the container. |
+| `signal` | `AbortSignal` | — | Cancel the request. |
+| `timeout` | `number` (ms) | client default | Per-call timeout override. |
+
+There is deliberately **no `language` parameter** — Kazakh and Russian share one output vocabulary, so the model is never told which to expect and a speaker can switch mid-sentence. See [the STT overview](/stt).
+
+Audio uploads as an octet-stream rather than multipart, which keeps the request body replayable — so transcriptions still benefit from the automatic retry on transient failures.
+
+### `geko.stt.models(options?)`
+
+List the STT models the endpoint serves, with the price per audio-second. Returns `{ data: SttModel[] }`.
+
+```ts
+const { data } = await geko.stt.models();
+// [{ id: "seta-kk-ru-v2", task: "transcription", languages: ["kk", "ru"],
+//    code_switching: true, credits_per_audio_second: 2.5 }]
+```
+
+<Warning>
+  This is **not** the same as `geko.models()`. The two hosts each serve a `/v1/models` with a different shape — use `geko.stt.models()` for transcription models and `geko.models()` for synthesis models and their voices.
+</Warning>
+
+### `geko.stt.estimateCredits(audioSeconds)`
+
+Price a file before you spend anything. Pure arithmetic — **no request is made** — and it matches the server's rounding, `ceil(seconds × 2.5)`.
+
+```ts
+geko.stt.estimateCredits(3600); // 9000 credits === $0.36 for an hour of audio
+```
+
+## Platform
+
+### `geko.models(options?)`
+
+List every **text-to-speech** model and its voices. Returns `{ data: Model[] }`.
 
 ```ts
 const { data } = await geko.models();
 // [{ name: "tokay-kk-v1", lang: "kk", sample_rate: 24000, voices: [...], default_voice: "Aigerim" }]
 ```
 
-## `geko.health(options?)`
+### `geko.health(options?)`
 
-Service probe. Returns `{ status, models: string[] }`.
+Text-to-speech service probe. Returns `{ status, models: string[] }`.
 
 ```ts
 const { status, models } = await geko.health(); // { status: "ok", models: ["tokay-kk-v1"] }
@@ -103,7 +177,11 @@ The read methods accept an `options` object of `{ signal?, timeout? }`.
 ## Types
 
 ```ts
-import type { Voice, Model, TtsParams, GekoOptions } from "@gekoai/sdk";
+import type {
+  Voice, Model, TtsParams,
+  Transcription, TranscribeParams, AudioInput, SttModel,
+  GekoOptions,
+} from "@gekoai/sdk";
 
 interface Voice {
   name: string;
@@ -112,12 +190,16 @@ interface Voice {
   best_for?: string | null;
 }
 
-interface Model {
-  name: string;
-  lang?: string | null;
-  sample_rate?: number | null;
-  voices?: string[];
-  default_voice?: string | null;
+interface Transcription {
+  text: string;               // lowercase, unpunctuated
+  model: string;              // "seta-kk-ru-v2"
+  audio_seconds: number;      // what you are billed for
+  processing_seconds: number;
+  rtf: number | null;         // processing_seconds / audio_seconds
+  x_realtime: number | null;  // e.g. 18.5
+  chunks: number;             // splits made at pause boundaries
+  sample_rate_in: number;     // before server-side resample to 16 kHz
+  credits_charged: number;    // ceil(audio_seconds × 2.5)
 }
 ```
 
@@ -143,16 +225,16 @@ Useful for proxies, logging, or tests. The SDK always calls fetch as a free func
 ## Next steps
 
 <CardGroup cols={2}>
-  <Card title="Playing & saving audio" icon="volume-high" href="/guides/playing-audio">
+  <Card title="Playing & saving audio" icon="volume-high" href="/tts/playing-audio">
     Turn the WAV bytes into files, playback, or other formats.
   </Card>
   <Card title="Errors & retries" icon="shield-check" href="/sdk/errors">
     Typed errors, automatic retries, timeouts, and cancellation.
   </Card>
-  <Card title="Latency & quality" icon="gauge-high" href="/guides/latency">
-    Tune the `nfe` dial and understand cold starts.
+  <Card title="Speech-to-text" icon="microphone" href="/stt">
+    Response fields, audio formats, and accuracy.
   </Card>
   <Card title="CLI" icon="list" href="/sdk/cli">
-    Synthesize and browse the catalog from your terminal.
+    `say` and `transcribe` from your terminal.
   </Card>
 </CardGroup>

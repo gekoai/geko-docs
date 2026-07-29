@@ -1,9 +1,9 @@
 ---
-title: "Errors & retries"
-description: "Typed errors, automatic retries, timeouts, and cancellation."
+title: "errors & retries"
+description: "typed errors, automatic retries, timeouts, and cancellation."
 ---
 
-The SDK throws two error types, and retries transient failures automatically.
+The SDK throws two error types, and retries transient failures automatically. Both apply identically to `tts.*` and `stt.*` — same credentials, same retry policy, two hosts.
 
 ## Error types
 
@@ -31,7 +31,7 @@ Extends `GekoError` (with `status === 0`). The request never reached the server 
 import { GekoError, GekoConnectionError } from "@gekoai/sdk";
 
 try {
-  await geko.tts.create({ text: "…" });
+  await geko.stt.transcribe({ audio });
 } catch (err) {
   if (err instanceof GekoConnectionError) {
     console.error(err.timedOut ? "timed out" : "network error", err.cause);
@@ -43,16 +43,23 @@ try {
 }
 ```
 
+### `TypeError`
+
+Thrown **before any request** for argument mistakes the SDK can catch locally — `stt.transcribe()` with both `audio` and `url` (or neither), empty `audio`, or a negative `estimateCredits()` duration. These aren't API errors and never count against your balance.
+
 ## Status codes
 
 | Status | Meaning | Retried? |
 | --- | --- | --- |
-| `400` | Bad request (e.g. empty `text`, unknown value). | No |
+| `400` | Bad request (empty `text`, unknown value, or `srt`/`vtt` on transcription). | No |
 | `401` | Missing or invalid API key. | No |
 | `404` | Unknown model or voice. | No |
+| `413` | Audio longer than **2 hours** — split it. Transcription only. | No |
 | `429` | Out of credits — top up in the console. | **No** (a retry can't create credits) |
 | `408` `409` `500` `502` `503` `504` | Transient / server-side. | **Yes** |
 | network / timeout | No response received. | **Yes** |
+
+`429` applies to **both** products at once — it's [one balance](/billing), so synthesis and transcription stop together.
 
 ## Automatic retries
 
@@ -66,7 +73,9 @@ const geko = new Geko({
 });
 ```
 
-`429` is deliberately **not** retried — it means you're out of credits, which retrying won't fix.
+Transcription uploads audio as an octet-stream rather than multipart, which keeps the request body **replayable** — so `stt.transcribe()` gets the same retry-on-5xx behavior as everything else.
+
+`tts.stream()` is the one exception: a partially consumed stream can't be replayed, so streams are **never** retried. Bound them with a per-call `timeout` and cancel with an `AbortSignal`.
 
 ## Timeouts & cancellation
 
@@ -85,7 +94,7 @@ const audio = await geko.tts.create({
 A user-triggered `abort()` propagates as-is (it is **not** retried or wrapped). A client-side timeout surfaces as a `GekoConnectionError` with `timedOut === true`.
 
 <Warning>
-  A `tts.create()` call that times out is retried by default. In the rare case a retry re-triggers a synthesis that had already succeeded server-side, you could be billed twice. If you need strict once-only semantics, set `maxRetries: 0`.
+  **Double-billing on a retried timeout.** A `tts.create()` or `stt.transcribe()` call that times out client-side is retried by default. In the rare case the original request had already succeeded server-side, you could be billed twice. If you need strict once-only semantics, set `maxRetries: 0` and handle retries yourself.
 </Warning>
 
 ## Next steps
@@ -95,7 +104,7 @@ A user-triggered `abort()` propagates as-is (it is **not** retried or wrapped). 
     Fix a 401 by creating or rotating a key.
   </Card>
   <Card title="Limits & constraints" icon="gauge-high" href="/limits">
-    Request limits, output format, and cold starts.
+    Request limits, formats, and cold starts.
   </Card>
   <Card title="Billing & credits" icon="credit-card" href="/billing">
     Why 429 means out of credits, and how to top up.

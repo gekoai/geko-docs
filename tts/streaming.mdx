@@ -1,6 +1,6 @@
 ---
-title: "Streaming audio"
-description: "Start playing sentence one while the rest still synthesizes."
+title: "streaming audio"
+description: "start playing sentence one while the rest still synthesizes."
 ---
 
 On long text, waiting for the whole clip before you hear anything is the slow path. **Streaming** hands you audio one sentence at a time: play sentence 1 while sentence 2 is still being synthesized, so time-to-first-audio drops from "the whole thing" to "the first sentence."
@@ -137,10 +137,10 @@ with requests.post(url, headers=headers, json=body, stream=True) as res:
   <Card title="Voice agents" icon="phone" href="/guides/voice-agents">
     Pipe an LLM's reply into streaming TTS for low-latency speech.
   </Card>
-  <Card title="Playing & saving audio" icon="volume-high" href="/guides/playing-audio">
+  <Card title="Playing & saving audio" icon="volume-high" href="/tts/playing-audio">
     Turn each WAV chunk into playback, files, or other formats.
   </Card>
-  <Card title="Latency & quality" icon="gauge-high" href="/guides/latency">
+  <Card title="Latency & quality" icon="gauge-high" href="/tts/latency">
     Drop `nfe` to 16 and dodge cold starts for faster audio.
   </Card>
   <Card title="Errors & retries" icon="shield-check" href="/sdk/errors">

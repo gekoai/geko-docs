@@ -1,6 +1,6 @@
 ---
-title: "Billing & credits"
-description: "How Geko meters usage, what it costs, and how credits work."
+title: "billing & credits"
+description: "how Geko meters usage, what it costs, and how credits work."
 ---
 
 Geko runs on **one credit balance per organization**, and **one API key** spends it on either product — text-to-speech bills by input characters, speech-to-text by seconds of audio. There is no second balance to top up and nothing to switch between.
@@ -31,14 +31,18 @@ When your balance hits zero, **both** products return **HTTP 429** with a `detai
 
 - **Balance & history:** view your current balance and per-request usage in the [console](https://app.geko.sh).
 - **Top up:** add credits in the console's billing section.
-- **Estimate before you send:** `chars = text.length`, `cost_usd = chars / 25000`.
+- **Estimate before you send:** both directions can be priced without a request.
 
 ```ts
-const cost = (text: string) => text.length / 25_000; // USD
+// text-to-speech — 1 credit per input character
+const ttsCost = (text: string) => text.length / 25_000; // USD
+
+// speech-to-text — matches the server's rounding, ceil(seconds × 2.5)
+geko.stt.estimateCredits(3600); // 9000 credits === $0.36 for an audio-hour
 ```
 
 <Note>
-  Streaming (`tts.stream`) and the OpenAI-compatible endpoint bill identically to `tts.create` — by input characters, once per request. Pricing is subject to change; the [console](https://app.geko.sh) always shows the current rate.
+  Streaming (`tts.stream`) and both OpenAI-compatible endpoints bill identically to their native counterparts — delivery and request shape change, price doesn't. Pricing is subject to change; the [console](https://app.geko.sh) always shows the current rate.
 </Note>
 
 ## Next steps

@@ -1,9 +1,13 @@
 ---
-title: "Roadmap"
-description: "What's planned but not yet available."
+title: "roadmap"
+description: "what's planned but not yet available."
 ---
 
-What exists today is the honest, working surface documented throughout these docs: `tts.create`, **`tts.stream`**, `voices`, `models`, `health`, the **OpenAI-compatible `/v1/audio/speech`** endpoint, and **CORS** for browser callers — with a typed SDK and CLI.
+What exists today is the honest, working surface documented throughout these docs — **both directions**:
+
+- **Text-to-speech** — `tts.create`, `tts.stream`, `voices`, `models`, `health`, and the OpenAI-compatible `/v1/audio/speech`.
+- **Speech-to-text** — `stt.transcribe` (bytes or URL), `stt.models`, `stt.estimateCredits`, and the OpenAI-compatible `/v1/audio/transcriptions`.
+- Plus **CORS** for browser callers, a typed SDK, and a CLI (`say`, `transcribe`, `voices`, `models`).
 
 <Warning>
   The items below are **planned, not yet available**. Nothing here is callable today — this page exists so you can plan around it. Track progress on [GitHub](https://github.com/gekoai).
@@ -11,23 +15,41 @@ What exists today is the honest, working surface documented throughout these doc
 
 ## More output formats
 
-Native **MP3**, **Opus**, and 8 kHz **µ-law** (telephony) alongside WAV/PCM, via the `response_format` parameter — smaller payloads and no client-side transcoding. Until then, [convert with `ffmpeg`](/guides/playing-audio).
+Native **MP3**, **Opus**, and 8 kHz **µ-law** (telephony) alongside WAV/PCM, via the `response_format` parameter — smaller payloads and no client-side transcoding. Until then, [convert with `ffmpeg`](/tts/playing-audio).
 
-_Today the API returns WAV (24 kHz, PCM16); the OpenAI-compatible endpoint also supports raw `pcm`._
+_Today synthesis returns WAV (24 kHz, PCM16); the OpenAI-compatible endpoint also supports raw `pcm`. Transcription already accepts any container `ffmpeg` reads on the way **in**._
 
-## Python SDK
+## Punctuation & truecasing
 
-A `geko` Python package mirroring this SDK's surface (`geko.tts.create(...)`, `geko.tts.stream(...)`), for Python-first backends and agents.
+Transcripts today are lowercase and unpunctuated — not stripped, but a property of the model's 70-character output vocabulary, which contains neither capitals nor punctuation. Restoring both is a separate modelling step.
 
-_Today the official SDK is TypeScript/JavaScript (`@gekoai/sdk`)._
+_Today: plan for lowercase, unpunctuated text, or post-process it yourself._
 
 ## Word / character timestamps
 
-Optional alignment data for captions, subtitles, and highlight-as-it-speaks UIs.
+Optional alignment data for captions, subtitles, and highlight-as-it-speaks UIs — on both directions.
+
+_This is also why `srt` and `vtt` return `400` on the transcription endpoint today: a character-CTC model has no word-level timings to emit, and `verbose_json` returns an empty `segments` array rather than invent them._
+
+## Python SDK
+
+A `geko` Python package mirroring this SDK's surface (`geko.tts.create(...)`, `geko.stt.transcribe(...)`), for Python-first backends and agents.
+
+_Today the official SDK is TypeScript/JavaScript (`@gekoai/sdk`); Python callers can use the OpenAI-compatible endpoints or raw HTTP._
+
+## Streaming transcription
+
+Incremental decoding, so a transcript arrives while the speaker is still talking rather than after the turn ends.
+
+_Today transcription is offline: send a complete clip, get the whole transcript. It's fast enough (~18× real time warm) that turn-based voice agents work well — see [Voice agents](/guides/voice-agents)._
+
+## Speaker diarization
+
+Labelling *who* spoke each segment, for multi-party calls and meetings.
 
 ## More languages & voices
 
-Tokay is Kazakh today. New languages and voices appear on the same endpoints — `GET /v1/models` and `GET /v1/voices` are the source of truth, so code that reads them adapts automatically.
+Tokay speaks Kazakh; Seta hears Kazakh and Russian. New languages and voices appear on the same endpoints — `GET /v1/models` and `GET /v1/voices` are the source of truth, so code that reads them adapts automatically.
 
 ---
 

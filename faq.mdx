@@ -1,24 +1,37 @@
 ---
 title: "FAQ & troubleshooting"
-description: "Common questions and fixes."
+sidebarTitle: "faq"
+description: "common questions and fixes."
 ---
 
 <AccordionGroup>
 
 <Accordion title="My first request is slow or times out">
-  The GPU scales to zero when idle, so the first call after a quiet period pays a **cold start** (tens of seconds); the next calls are fast. Keep the SDK's default 120 s timeout, and for predictable traffic send a lightweight `geko.health()` to pre-warm. See [Latency & quality](/guides/latency).
+  Both GPU services scale to zero when idle, so the first call after a quiet period pays a **cold start** (tens of seconds); the next calls are fast. Keep the SDK's default 120 s timeout, and for predictable traffic send a lightweight `geko.health()` to pre-warm. Note the two services warm **independently** — a synthesis call doesn't warm the transcriber. See [Latency & quality](/tts/latency).
 </Accordion>
 
 <Accordion title="I'm getting 401 Unauthorized">
-  The `Authorization: Bearer sk-tokay-…` header is missing or the key is wrong/revoked. Create or check keys in the [console](https://app.geko.sh). With the SDK, pass `apiKey` or set `GEKO_API_KEY`.
+  The `Authorization: Bearer sk-tokay-…` header is missing or the key is wrong/revoked. Create or check keys in the [console](https://app.geko.sh). With the SDK, pass `apiKey` or set `GEKO_API_KEY`. The same key works for both directions — if one works and the other doesn't, check the base URL, not the key.
 </Accordion>
 
 <Accordion title="I'm getting 429 (out of credits)">
-  Your organization's balance is depleted. Top up in the [console](https://app.geko.sh). The SDK does not retry 429 — a retry can't create credits. See [Billing](/billing).
+  Your organization's balance is depleted. Because it's **one balance for both products**, synthesis and transcription stop together. Top up in the [console](https://app.geko.sh). The SDK does not retry 429 — a retry can't create credits. See [Billing](/billing).
+</Accordion>
+
+<Accordion title="I'm getting 413 on a transcription">
+  The audio is longer than the **2 hour** per-request cap. Split it and send the pieces. Within that cap, long audio is chunked automatically at pauses, so you don't need to split for quality reasons. See [Limits](/limits).
 </Accordion>
 
 <Accordion title="I'm getting 503 'auth backend unavailable'">
   A transient hiccup validating the key. The SDK retries `503` automatically with backoff; if it persists, retry shortly or check the [console](https://app.geko.sh).
+</Accordion>
+
+<Accordion title="Why is the transcript all lowercase with no punctuation?">
+  By design, not post-processing. The model's output vocabulary is 70 characters — both alphabets plus Latin `a–z` — and contains no capitals and no punctuation, so there's nothing being stripped. Punctuation and truecasing are on the [roadmap](/roadmap). See [the STT overview](/stt).
+</Accordion>
+
+<Accordion title="How do I tell it the audio is Kazakh (or Russian)?">
+  You don't, and you can't — there's deliberately no `language` parameter. Both languages share one output vocabulary, so the model is never told which to expect and a speaker can switch mid-sentence, even inside a word. `language` **is** accepted and ignored on the OpenAI-compatible endpoint so existing clients don't break. See [the STT overview](/stt).
 </Accordion>
 
 <Accordion title="Can I call the API from the browser?">
@@ -26,23 +39,27 @@ description: "Common questions and fixes."
 </Accordion>
 
 <Accordion title="How do I get MP3 or Opus instead of WAV?">
-  The API returns WAV (and raw `pcm` via the OpenAI endpoint) today. Convert locally with `ffmpeg` — see [Playing & saving audio](/guides/playing-audio). Native MP3/Opus is on the [roadmap](/roadmap).
+  Synthesis returns WAV (and raw `pcm` via the OpenAI endpoint) today. Convert locally with `ffmpeg` — see [Playing & saving audio](/tts/playing-audio). Native MP3/Opus is on the [roadmap](/roadmap). For *input* to transcription, MP3 and Opus already work — anything `ffmpeg` reads.
 </Accordion>
 
 <Accordion title="Which voice should I use?">
-  Fetch the live catalog with [`geko.tts.voices()`](/voices) (or `GET /v1/voices`) — each entry has `style` and `best_for` to guide the choice. `Aigerim` is the default.
+  Fetch the live catalog with [`geko.tts.voices()`](/tts/voices) (or `GET /v1/voices`) — each entry has `style` and `best_for` to guide the choice. `Aigerim` is the default.
 </Accordion>
 
 <Accordion title="How do I stream audio for a voice agent?">
-  Use [`geko.tts.stream()`](/sdk/typescript) (SDK `0.3.0`+), which yields one WAV chunk per sentence so playback can start sooner. It needs the streaming endpoint `POST /v1/tts/stream`.
+  Use [`geko.tts.stream()`](/tts/streaming), which yields one WAV chunk per sentence so playback can start sooner. Pair it with `geko.stt.transcribe()` for the listening half — see [Voice agents](/guides/voice-agents) for the full loop.
+</Accordion>
+
+<Accordion title="Can I get word-level timestamps or subtitles?">
+  Not yet. `seta-kk-ru-v2` is a character-CTC model with no word-level alignment to emit, which is why `srt`/`vtt` return `400` rather than silently handing back JSON, and `verbose_json` returns an empty `segments` array. Timestamps are on the [roadmap](/roadmap).
 </Accordion>
 
 <Accordion title="Is there a Python SDK?">
-  Not yet — use the [OpenAI-compatible endpoint](/guides/openai) with the `openai` Python package, or call the [HTTP API](/api/reference) directly. A native Python SDK is on the [roadmap](/roadmap).
+  Not yet — use the OpenAI-compatible endpoints with the `openai` Python package ([speech](/tts/openai), [transcription](/stt/openai)), or call the [HTTP API](/api/reference) directly. A native Python SDK is on the [roadmap](/roadmap).
 </Accordion>
 
 <Accordion title="How is usage billed?">
-  By **input characters**, per organization — $0.04 / 1,000 chars. See [Billing & credits](/billing).
+  Per organization, from one balance: **text-to-speech by input characters** ($0.04 / 1,000) and **speech-to-text by seconds of audio** ($0.36 / hour). Only successful requests are billed. See [Billing & credits](/billing).
 </Accordion>
 
 </AccordionGroup>
@@ -55,7 +72,7 @@ Still stuck? Open an issue on [GitHub](https://github.com/gekoai) or email [amir
   <Card title="Errors & retries" icon="shield-check" href="/sdk/errors">
     Every status code, when it retries, and how to handle it.
   </Card>
-  <Card title="Latency & quality" icon="gauge-high" href="/guides/latency">
+  <Card title="Latency & quality" icon="gauge-high" href="/tts/latency">
     Cold starts, keep-warm, and the `nfe` dial.
   </Card>
   <Card title="Billing & credits" icon="credit-card" href="/billing">

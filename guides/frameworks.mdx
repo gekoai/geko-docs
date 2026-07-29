@@ -1,6 +1,6 @@
 ---
-title: "Use it in your app"
-description: "Server-side integration for Next.js and Express — the safe way."
+title: "use it in your app"
+description: "server-side integration for Next.js and Express — the safe way."
 ---
 
 The golden rule: **call Geko from your server, and let your frontend call your server.** The API now allows cross-origin browser calls (CORS), but that doesn't make it safe to expose your key — a key shipped to the client is public. Keep it on the server.
@@ -8,6 +8,8 @@ The golden rule: **call Geko from your server, and let your frontend call your s
 ```
 browser ──▶ your backend (holds GEKO_API_KEY) ──▶ Geko API
 ```
+
+This applies to **both directions**: synthesis and transcription use the same billable key, so both belong behind your backend.
 
 ## Next.js (App Router)
 
@@ -79,11 +81,61 @@ app.post("/tts", async (req, res) => {
 app.listen(3000);
 ```
 
+## Accepting an upload to transcribe
+
+The other direction: take a file from the browser and hand the bytes to `stt.transcribe()`. Same client, same key.
+
+```ts app/api/transcribe/route.ts
+import { Geko, GekoError } from "@gekoai/sdk";
+
+const geko = new Geko({ apiKey: process.env.GEKO_API_KEY });
+
+export const maxDuration = 120;
+
+export async function POST(req: Request) {
+  const form = await req.formData();
+  const file = form.get("file");
+  if (!(file instanceof File)) {
+    return Response.json({ error: "file is required" }, { status: 400 });
+  }
+  try {
+    const { text, audio_seconds, credits_charged } = await geko.stt.transcribe({
+      audio: await file.arrayBuffer(),
+      filename: file.name, // the extension tells the server the container
+    });
+    return Response.json({ text, audio_seconds, credits_charged });
+  } catch (err) {
+    if (err instanceof GekoError) {
+      return Response.json({ error: err.detail }, { status: err.status || 502 });
+    }
+    return Response.json({ error: "transcription failed" }, { status: 502 });
+  }
+}
+```
+
+From the client:
+
+```ts
+async function transcribe(file: File) {
+  const body = new FormData();
+  body.append("file", file);
+  const res = await fetch("/api/transcribe", { method: "POST", body });
+  if (!res.ok) throw new Error((await res.json()).error);
+  const { text } = await res.json();
+  return text; // lowercase, unpunctuated
+}
+```
+
+<Note>
+  Check your platform's request body limit before accepting long audio — Vercel serverless functions cap request bodies at **4.5 MB**, which is only a few minutes of WAV. For longer files, upload to storage first and pass a URL: `geko.stt.transcribe({ url })` has the server fetch it, so the audio never transits your function.
+</Note>
+
 ## Serverless notes
 
 <Note>
-  **Cold starts:** the GPU backend scales to zero, so the first request after idle can take tens of seconds. Raise your function's max duration (e.g. Next.js `maxDuration`) and keep the SDK's default 120 s timeout.
+  **Cold starts:** both GPU backends scale to zero, so the first request after idle can take tens of seconds. Raise your function's max duration (e.g. Next.js `maxDuration`) and keep the SDK's default 120 s timeout. The two services warm independently.
 </Note>
 
-- **Reuse the client:** construct `new Geko(...)` once at module scope, not per request.
-- **Long text? stream it.** For paragraphs or assistant replies, `geko.tts.stream()` starts audio after the first sentence instead of the full render — proxy the chunks straight through. See [Streaming audio](/guides/streaming).
+- **Reuse the client:** construct `new Geko(...)` once at module scope, not per request. One client covers both directions.
+- **Long text? stream it.** For paragraphs or assistant replies, `geko.tts.stream()` starts audio after the first sentence instead of the full render — proxy the chunks straight through. See [Streaming audio](/tts/streaming).
+- **Long audio? pass a URL.** Avoids your function's body limit and its execution time budget entirely.

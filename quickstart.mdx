@@ -1,11 +1,11 @@
 ---
-title: "Quickstart"
-description: "From zero to your first hello.wav in three steps."
+title: "quickstart"
+description: "from zero to speech in both directions, in three steps."
 ---
 
 <Steps>
   <Step title="Get an API key">
-    Create a key in the [Geko console](https://app.geko.sh). Keys look like `sk-tokay-…`. Keep it server-side — treat it like a password. New accounts get **$1.00 of free credits**.
+    Create a key in the [Geko console](https://app.geko.sh). Keys look like `sk-tokay-…`. Keep it server-side — treat it like a password. New accounts get **$1.00 of free credits**, and one key covers both directions.
 
     ```bash
     export GEKO_API_KEY=sk-tokay-...
@@ -13,7 +13,7 @@ description: "From zero to your first hello.wav in three steps."
   </Step>
 
   <Step title="Make a sound">
-    Pick whichever feels natural — all three do the same thing.
+    Pick whichever feels natural — all four do the same thing.
 
     <CodeGroup>
     ```bash CLI
@@ -55,15 +55,46 @@ description: "From zero to your first hello.wav in three steps."
       --output hello.wav
     ```
     </CodeGroup>
-  </Step>
 
-  <Step title="Play it">
+    `hello.wav` is 24 kHz, 16-bit PCM mono. Play it:
+
     ```bash
     afplay hello.wav   # macOS
     aplay hello.wav    # Linux
     ```
+  </Step>
 
-    That's it. `hello.wav` is 24 kHz, 16-bit PCM mono.
+  <Step title="Read it back">
+    Now the other direction — send that same file back and get the text.
+
+    <CodeGroup>
+    ```bash CLI
+    npx @gekoai/sdk transcribe hello.wav
+    # сәлеметсіз бе
+    #   1.2s audio · 3 credits · 18.5× realtime
+    ```
+
+    ```ts SDK
+    import { readFile } from "node:fs/promises";
+
+    const { text, audio_seconds, credits_charged } = await geko.stt.transcribe({
+      audio: await readFile("hello.wav"),
+      filename: "hello.wav",
+    });
+
+    console.log(text); // сәлеметсіз бе
+    ```
+
+    ```bash curl
+    curl -X POST https://geko--seta-serve-transcriber-api.modal.run/v1/transcribe \
+      -H "Authorization: Bearer $GEKO_API_KEY" \
+      -H "Content-Type: application/octet-stream" \
+      -H "x-filename: hello.wav" \
+      --data-binary @hello.wav
+    ```
+    </CodeGroup>
+
+    That's the whole API — text in, audio out, audio in, text out. Same key, [same balance](/billing).
   </Step>
 </Steps>
 
@@ -78,11 +109,11 @@ The SDK has **no runtime dependencies** and ships both ESM and CommonJS with typ
 ## What next
 
 <CardGroup cols={2}>
-  <Card title="Pick a voice" icon="waveform-lines" href="/voices">
-    Browse the catalog and audition each voice.
+  <Card title="Text-to-speech" icon="waveform-lines" href="/tts">
+    Voices, streaming, the `nfe` dial, and output formats.
   </Card>
-  <Card title="Latency vs. quality" icon="gauge-high" href="/guides/latency">
-    Tune the `nfe` dial for speed or fidelity.
+  <Card title="Speech-to-text" icon="microphone" href="/stt">
+    Code-switching, accepted audio, and accuracy numbers.
   </Card>
   <Card title="Use it in your app" icon="react" href="/guides/frameworks">
     Server-side Next.js / Express integration, done right.
@@ -93,5 +124,5 @@ The SDK has **no runtime dependencies** and ships both ESM and CommonJS with typ
 </CardGroup>
 
 <Note>
-  **First call slow?** The GPU backend scales to zero when idle, so a cold start can take tens of seconds; subsequent calls are fast. The SDK's default 120 s timeout accounts for this.
+  **First call slow?** Both GPU backends scale to zero when idle, so a cold start can take tens of seconds; subsequent calls are fast. The SDK's default 120 s timeout accounts for this. The two services warm independently.
 </Note>
