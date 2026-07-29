@@ -6,44 +6,75 @@
     "description": "Text-to-speech for Kazakh and beyond. Send text and a voice name; get back WAV audio (24 kHz, 16-bit PCM, mono). A thin, familiar HTTP API — call it from any language, or use the typed SDK and CLI.\n\nThe catalog endpoints (`/v1/models`, `/v1/voices`, `/health`) are open. Synthesis endpoints require a bearer key — create one in the [console](https://app.geko.sh)."
   },
   "servers": [
-    { "url": "https://geko--tokay-serve-web.modal.run" }
+    {
+      "url": "https://geko--tokay-serve-web.modal.run",
+      "description": "Text-to-speech service"
+    }
   ],
   "security": [
-    { "bearerAuth": [] }
+    {
+      "bearerAuth": []
+    }
   ],
   "paths": {
     "/v1/transcribe": {
-      "servers": [{ "url": "https://geko--seta-serve-transcriber-api.modal.run" }],
+      "servers": [
+        {
+          "url": "https://geko--seta-serve-transcriber-api.modal.run"
+        }
+      ],
       "post": {
         "operationId": "createTranscription",
         "summary": "Transcribe speech",
         "description": "Transcribe Kazakh/Russian audio, including speakers who switch language mid-sentence. Send audio as a raw request body (naming the container with an `x-filename` header), as a multipart `file`, or pass `?url=` and let the server fetch it. Billed on audio duration at 2.5 credits per second, from the same credit balance as text-to-speech.",
-        "tags": ["Speech-to-text"],
-        "security": [{ "bearerAuth": [] }],
+        "tags": [
+          "Speech-to-text"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "parameters": [
           {
             "name": "url",
             "in": "query",
             "required": false,
             "description": "Public URL of the audio. Use instead of sending a body.",
-            "schema": { "type": "string", "format": "uri" }
+            "schema": {
+              "type": "string",
+              "format": "uri"
+            }
           },
           {
             "name": "x-filename",
             "in": "header",
             "required": false,
             "description": "Filename hint; only the extension matters, so the server knows the container. Defaults to `audio.wav`.",
-            "schema": { "type": "string", "example": "call.wav" }
+            "schema": {
+              "type": "string",
+              "example": "call.wav"
+            }
           }
         ],
         "requestBody": {
           "required": false,
           "content": {
-            "application/octet-stream": { "schema": { "type": "string", "format": "binary" } },
+            "application/octet-stream": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            },
             "multipart/form-data": {
               "schema": {
                 "type": "object",
-                "properties": { "file": { "type": "string", "format": "binary" } }
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
               }
             }
           }
@@ -54,66 +85,138 @@
             "headers": {
               "X-Seta-Audio-Seconds": {
                 "description": "Duration of the submitted audio — what you were billed for.",
-                "schema": { "type": "number" }
+                "schema": {
+                  "type": "number"
+                }
               },
               "X-Seta-Credits": {
                 "description": "Credits charged for this request.",
-                "schema": { "type": "integer" }
+                "schema": {
+                  "type": "integer"
+                }
               },
               "X-Seta-Model": {
                 "description": "Model that produced the transcript.",
-                "schema": { "type": "string" }
+                "schema": {
+                  "type": "string"
+                }
               }
             },
             "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/Transcription" } }
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Transcription"
+                }
+              }
             }
           },
           "400": {
             "description": "No audio supplied.",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "401": {
             "description": "Missing or invalid API key.",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "413": {
             "description": "Audio longer than 2 hours. Split it and send the parts.",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "429": {
             "description": "Out of credits — top up in the console.",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
-        }
+        },
+        "servers": [
+          {
+            "url": "https://geko--seta-serve-transcriber-api.modal.run",
+            "description": "Speech-to-text service (scaled separately from text-to-speech)"
+          }
+        ]
       }
     },
     "/v1/audio/transcriptions": {
-      "servers": [{ "url": "https://geko--seta-serve-transcriber-api.modal.run" }],
+      "servers": [
+        {
+          "url": "https://geko--seta-serve-transcriber-api.modal.run"
+        }
+      ],
       "post": {
         "operationId": "createTranscriptionOpenAI",
         "summary": "Transcribe speech (OpenAI-compatible)",
         "description": "Drop-in replacement for OpenAI's transcription endpoint — an existing client changes only its `baseURL`. `language`, `prompt` and `temperature` are accepted and ignored: the model shares one Kazakh+Russian vocabulary, so it is never told which language to expect. `srt` and `vtt` return 400, because a character-CTC model produces no word timings.",
-        "tags": ["Speech-to-text"],
-        "security": [{ "bearerAuth": [] }],
+        "tags": [
+          "Speech-to-text"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
             "multipart/form-data": {
               "schema": {
                 "type": "object",
-                "required": ["file"],
+                "required": [
+                  "file"
+                ],
                 "properties": {
-                  "file": { "type": "string", "format": "binary", "description": "The audio to transcribe." },
-                  "model": { "type": "string", "default": "seta-kk-ru-v2" },
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "The audio to transcribe."
+                  },
+                  "model": {
+                    "type": "string",
+                    "default": "seta-kk-ru-v2"
+                  },
                   "response_format": {
                     "type": "string",
-                    "enum": ["json", "text", "verbose_json"],
+                    "enum": [
+                      "json",
+                      "text",
+                      "verbose_json"
+                    ],
                     "default": "json"
                   },
-                  "language": { "type": "string", "description": "Accepted and ignored." },
-                  "prompt": { "type": "string", "description": "Accepted and ignored." },
-                  "temperature": { "type": "number", "description": "Accepted and ignored." }
+                  "language": {
+                    "type": "string",
+                    "description": "Accepted and ignored."
+                  },
+                  "prompt": {
+                    "type": "string",
+                    "description": "Accepted and ignored."
+                  },
+                  "temperature": {
+                    "type": "number",
+                    "description": "Accepted and ignored."
+                  }
                 }
               }
             }
@@ -126,26 +229,60 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "required": ["text"],
-                  "properties": { "text": { "type": "string" } }
+                  "required": [
+                    "text"
+                  ],
+                  "properties": {
+                    "text": {
+                      "type": "string"
+                    }
+                  }
                 }
               },
-              "text/plain": { "schema": { "type": "string" } }
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
             }
           },
           "400": {
             "description": "No audio, or an unsupported `response_format` (`srt`/`vtt`).",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "401": {
             "description": "Missing or invalid API key.",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "429": {
             "description": "Out of credits — top up in the console.",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
-        }
+        },
+        "servers": [
+          {
+            "url": "https://geko--seta-serve-transcriber-api.modal.run",
+            "description": "Speech-to-text service (scaled separately from text-to-speech)"
+          }
+        ]
       }
     },
     "/v1/tts": {
@@ -153,12 +290,16 @@
         "operationId": "createSpeech",
         "summary": "Synthesize speech",
         "description": "Synthesize text into speech. Returns raw **WAV** bytes (`audio/wav`, 24 kHz, 16-bit PCM, mono). The `X-Tokay-Chars` response header reports the billed character count.",
-        "tags": ["Speech"],
+        "tags": [
+          "Speech"
+        ],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
-              "schema": { "$ref": "#/components/schemas/TtsRequest" }
+              "schema": {
+                "$ref": "#/components/schemas/TtsRequest"
+              }
             }
           }
         },
@@ -168,18 +309,35 @@
             "headers": {
               "X-Tokay-Chars": {
                 "description": "Billed character count for this request.",
-                "schema": { "type": "integer" }
+                "schema": {
+                  "type": "integer"
+                }
               }
             },
             "content": {
-              "audio/wav": { "schema": { "type": "string", "format": "binary" } }
+              "audio/wav": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
             }
           },
-          "400": { "$ref": "#/components/responses/BadRequest" },
-          "401": { "$ref": "#/components/responses/Unauthorized" },
-          "404": { "$ref": "#/components/responses/NotFound" },
-          "429": { "$ref": "#/components/responses/OutOfCredits" },
-          "503": { "$ref": "#/components/responses/Unavailable" }
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "429": {
+            "$ref": "#/components/responses/OutOfCredits"
+          },
+          "503": {
+            "$ref": "#/components/responses/Unavailable"
+          }
         },
         "x-codeSamples": [
           {
@@ -200,12 +358,16 @@
         "operationId": "streamSpeech",
         "summary": "Stream speech sentence-by-sentence",
         "description": "Same request body as `POST /v1/tts`, but the response is delivered as each sentence finishes synthesizing — lower time-to-first-audio on long text. Auth and metering are identical to `/v1/tts`.\n\nThe body is a sequence of **frames**: a 4-byte big-endian length, followed by that many bytes of one complete WAV. Read a length, read that many bytes (one playable WAV chunk), repeat until the stream closes. The `X-Tokay-Stream: wav-frames-v1` header identifies the framing. Most callers should use the SDK's `geko.tts.stream()`, which wraps this as an async iterable — see the [streaming guide](/guides/streaming).",
-        "tags": ["Speech"],
+        "tags": [
+          "Speech"
+        ],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
-              "schema": { "$ref": "#/components/schemas/TtsRequest" }
+              "schema": {
+                "$ref": "#/components/schemas/TtsRequest"
+              }
             }
           }
         },
@@ -215,18 +377,35 @@
             "headers": {
               "X-Tokay-Stream": {
                 "description": "Framing identifier. Always `wav-frames-v1`.",
-                "schema": { "type": "string" }
+                "schema": {
+                  "type": "string"
+                }
               }
             },
             "content": {
-              "application/octet-stream": { "schema": { "type": "string", "format": "binary" } }
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
             }
           },
-          "400": { "$ref": "#/components/responses/BadRequest" },
-          "401": { "$ref": "#/components/responses/Unauthorized" },
-          "404": { "$ref": "#/components/responses/NotFound" },
-          "429": { "$ref": "#/components/responses/OutOfCredits" },
-          "503": { "$ref": "#/components/responses/Unavailable" }
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "429": {
+            "$ref": "#/components/responses/OutOfCredits"
+          },
+          "503": {
+            "$ref": "#/components/responses/Unavailable"
+          }
         },
         "x-codeSamples": [
           {
@@ -242,12 +421,16 @@
         "operationId": "createSpeechOpenAICompatible",
         "summary": "OpenAI-compatible speech",
         "description": "OpenAI-compatible alias — point the OpenAI SDK at geko by swapping the base URL and model. Maps OpenAI's request shape onto the Tokay engine. See the [OpenAI compatibility guide](/guides/openai).",
-        "tags": ["Speech"],
+        "tags": [
+          "Speech"
+        ],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
-              "schema": { "$ref": "#/components/schemas/SpeechRequest" }
+              "schema": {
+                "$ref": "#/components/schemas/SpeechRequest"
+              }
             }
           }
         },
@@ -255,12 +438,23 @@
           "200": {
             "description": "WAV audio (or raw PCM when `response_format` is `pcm`).",
             "content": {
-              "audio/wav": { "schema": { "type": "string", "format": "binary" } }
+              "audio/wav": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
             }
           },
-          "400": { "$ref": "#/components/responses/BadRequest" },
-          "401": { "$ref": "#/components/responses/Unauthorized" },
-          "429": { "$ref": "#/components/responses/OutOfCredits" }
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "429": {
+            "$ref": "#/components/responses/OutOfCredits"
+          }
         },
         "x-codeSamples": [
           {
@@ -276,14 +470,18 @@
         "operationId": "listModels",
         "summary": "List models",
         "description": "List the models on the platform and their voices. **Open** — no API key required.",
-        "tags": ["Catalog"],
+        "tags": [
+          "Catalog"
+        ],
         "security": [],
         "responses": {
           "200": {
             "description": "The model catalog.",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/ModelsResponse" }
+                "schema": {
+                  "$ref": "#/components/schemas/ModelsResponse"
+                }
               }
             }
           }
@@ -295,7 +493,9 @@
         "operationId": "listVoices",
         "summary": "List voices",
         "description": "The voice catalog for a model. **Open** — no API key required.",
-        "tags": ["Catalog"],
+        "tags": [
+          "Catalog"
+        ],
         "security": [],
         "parameters": [
           {
@@ -303,7 +503,10 @@
             "in": "query",
             "required": false,
             "description": "Model id. Defaults to `tokay-kk-v1`.",
-            "schema": { "type": "string", "default": "tokay-kk-v1" }
+            "schema": {
+              "type": "string",
+              "default": "tokay-kk-v1"
+            }
           }
         ],
         "responses": {
@@ -311,7 +514,9 @@
             "description": "The voice catalog for the requested model.",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/VoicesResponse" }
+                "schema": {
+                  "$ref": "#/components/schemas/VoicesResponse"
+                }
               }
             }
           }
@@ -323,14 +528,18 @@
         "operationId": "health",
         "summary": "Service status",
         "description": "Liveness probe. **Open** — no API key required.",
-        "tags": ["Catalog"],
+        "tags": [
+          "Catalog"
+        ],
         "security": [],
         "responses": {
           "200": {
             "description": "Service is up.",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/HealthResponse" }
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
               }
             }
           }
@@ -349,29 +558,76 @@
     "responses": {
       "BadRequest": {
         "description": "Bad request — missing `text`, malformed body, or an invalid value.",
-        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" }, "example": { "detail": "text is required" } } }
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            },
+            "example": {
+              "detail": "text is required"
+            }
+          }
+        }
       },
       "Unauthorized": {
         "description": "Missing or invalid API key.",
-        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" }, "example": { "detail": "invalid API key" } } }
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            },
+            "example": {
+              "detail": "invalid API key"
+            }
+          }
+        }
       },
       "NotFound": {
         "description": "Unknown model or voice.",
-        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" }, "example": { "detail": "unknown voice" } } }
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            },
+            "example": {
+              "detail": "unknown voice"
+            }
+          }
+        }
       },
       "OutOfCredits": {
         "description": "Out of credits — top up in the console. Not retried by the SDK.",
-        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" }, "example": { "detail": "out of credits — top up in the geko console" } } }
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            },
+            "example": {
+              "detail": "out of credits — top up in the geko console"
+            }
+          }
+        }
       },
       "Unavailable": {
         "description": "Auth backend temporarily unavailable (transient — retry).",
-        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" }, "example": { "detail": "service temporarily unavailable" } } }
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            },
+            "example": {
+              "detail": "service temporarily unavailable"
+            }
+          }
+        }
       }
     },
     "schemas": {
       "TtsRequest": {
         "type": "object",
-        "required": ["text"],
+        "required": [
+          "text"
+        ],
         "properties": {
           "text": {
             "type": "string",
@@ -409,7 +665,9 @@
       },
       "SpeechRequest": {
         "type": "object",
-        "required": ["input"],
+        "required": [
+          "input"
+        ],
         "properties": {
           "input": {
             "type": "string",
@@ -429,7 +687,10 @@
           "response_format": {
             "type": "string",
             "default": "wav",
-            "enum": ["wav", "pcm"],
+            "enum": [
+              "wav",
+              "pcm"
+            ],
             "description": "`wav` or `pcm` (raw 16-bit PCM @ 24 kHz). `mp3`/`opus`/`aac`/`flac` return 400 (not transcoded yet)."
           },
           "speed": {
@@ -441,20 +702,31 @@
       },
       "Transcription": {
         "type": "object",
-        "required": ["text", "model", "audio_seconds", "credits_charged"],
+        "required": [
+          "text",
+          "model",
+          "audio_seconds",
+          "credits_charged"
+        ],
         "properties": {
           "text": {
             "type": "string",
             "description": "The transcript. Lowercase and unpunctuated — the model's vocabulary contains neither, so nothing is being stripped.",
             "example": "сәлеметсіз бе бүгін ауа райы өте жақсы"
           },
-          "model": { "type": "string", "example": "seta-kk-ru-v2" },
+          "model": {
+            "type": "string",
+            "example": "seta-kk-ru-v2"
+          },
           "audio_seconds": {
             "type": "number",
             "description": "Duration of the submitted audio. This is the billed quantity.",
             "example": 2.84
           },
-          "processing_seconds": { "type": "number", "example": 0.153 },
+          "processing_seconds": {
+            "type": "number",
+            "example": 0.153
+          },
           "rtf": {
             "type": "number",
             "nullable": true,
@@ -487,46 +759,113 @@
       "Error": {
         "type": "object",
         "properties": {
-          "detail": { "type": "string", "description": "Human-readable error message." }
+          "detail": {
+            "type": "string",
+            "description": "Human-readable error message."
+          }
         }
       },
       "Model": {
         "type": "object",
         "properties": {
-          "name": { "type": "string", "example": "tokay-kk-v1" },
-          "lang": { "type": "string", "example": "kk" },
-          "sample_rate": { "type": "integer", "example": 24000 },
-          "voices": { "type": "array", "items": { "type": "string" }, "example": ["Aigerim", "Arman", "Ainur", "Aruzhan", "Sanzhar", "Yerlan"] },
-          "default_voice": { "type": "string", "example": "Aigerim" }
+          "name": {
+            "type": "string",
+            "example": "tokay-kk-v1"
+          },
+          "lang": {
+            "type": "string",
+            "example": "kk"
+          },
+          "sample_rate": {
+            "type": "integer",
+            "example": 24000
+          },
+          "voices": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": [
+              "Aigerim",
+              "Arman",
+              "Ainur",
+              "Aruzhan",
+              "Sanzhar",
+              "Yerlan"
+            ]
+          },
+          "default_voice": {
+            "type": "string",
+            "example": "Aigerim"
+          }
         }
       },
       "ModelsResponse": {
         "type": "object",
         "properties": {
-          "data": { "type": "array", "items": { "$ref": "#/components/schemas/Model" } }
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Model"
+            }
+          }
         }
       },
       "Voice": {
         "type": "object",
         "properties": {
-          "name": { "type": "string", "example": "Aigerim" },
-          "gender": { "type": "string", "nullable": true, "example": "female" },
-          "style": { "type": "string", "nullable": true, "example": "Warm, professional" },
-          "best_for": { "type": "string", "nullable": true, "example": "Reception, customer support" }
+          "name": {
+            "type": "string",
+            "example": "Aigerim"
+          },
+          "gender": {
+            "type": "string",
+            "nullable": true,
+            "example": "female"
+          },
+          "style": {
+            "type": "string",
+            "nullable": true,
+            "example": "Warm, professional"
+          },
+          "best_for": {
+            "type": "string",
+            "nullable": true,
+            "example": "Reception, customer support"
+          }
         }
       },
       "VoicesResponse": {
         "type": "object",
         "properties": {
-          "model": { "type": "string", "example": "tokay-kk-v1" },
-          "voices": { "type": "array", "items": { "$ref": "#/components/schemas/Voice" } }
+          "model": {
+            "type": "string",
+            "example": "tokay-kk-v1"
+          },
+          "voices": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Voice"
+            }
+          }
         }
       },
       "HealthResponse": {
         "type": "object",
         "properties": {
-          "status": { "type": "string", "example": "ok" },
-          "models": { "type": "array", "items": { "type": "string" }, "example": ["tokay-kk-v1"] }
+          "status": {
+            "type": "string",
+            "example": "ok"
+          },
+          "models": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": [
+              "tokay-kk-v1"
+            ]
+          }
         }
       }
     }
