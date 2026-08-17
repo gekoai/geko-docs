@@ -1,0 +1,211 @@
+---
+title: "word-level timestamps"
+sidebarTitle: "timestamps"
+description: "get every word with a start and end time, in seconds. one flag, no extra cost, and subtitles fall out of it."
+---
+
+By default a transcription is one block of text. Add `timestamps: true` and you also get **every word located in time** — plus the transcript grouped into runs of speech, ready for subtitles.
+
+```bash
+curl -X POST "https://geko--seta-serve-transcriber-api.modal.run/v1/transcribe?timestamps=true" \
+  -H "Authorization: Bearer $GEKO_API_KEY" \
+  -H "Content-Type: application/octet-stream" \
+  --data-binary @call.wav
+```
+
+<Note>
+  Timestamps are **free**. The alignment is a by-product of the same decode pass, and you are billed on `audio_seconds` whether you ask for it or not.
+</Note>
+
+## turning it on
+
+<CodeGroup>
+```ts TypeScript
+import { Geko } from "@gekoai/sdk";
+import { readFile } from "node:fs/promises";
+
+const geko = new Geko({ apiKey: process.env.GEKO_API_KEY });
+
+const out = await geko.stt.transcribe({
+  audio: await readFile("call.wav"),
+  filename: "call.wav",
+  timestamps: true,
+});
+
+for (const w of out.words ?? []) {
+  console.log(`[${w.start.toFixed(2)}–${w.end.toFixed(2)}] ${w.word}`);
+}
+// [0.20–0.72] сәлеметсіз
+// [0.84–1.12] бе
+```
+
+```bash CLI
+# one word per line: start, end, word — tab-separated
+npx @gekoai/sdk transcribe call.wav --words
+
+# 0.20    0.72    сәлеметсіз
+# 0.84    1.12    бе
+```
+
+```bash curl
+curl -X POST ".../v1/transcribe?timestamps=true" \
+  -H "Authorization: Bearer $GEKO_API_KEY" \
+  -H "Content-Type: application/octet-stream" \
+  --data-binary @call.wav
+```
+
+```python Python
+import requests
+
+r = requests.post(
+    "https://geko--seta-serve-transcriber-api.modal.run/v1/transcribe",
+    params={"timestamps": "true"},
+    headers={
+        "Authorization": f"Bearer {API_KEY}",
+        "Content-Type": "application/octet-stream",
+    },
+    data=open("call.wav", "rb").read(),
+)
+
+for w in r.json()["words"]:
+    print(f"[{w['start']:.2f}-{w['end']:.2f}] {w['word']}")
+```
+</CodeGroup>
+
+## what comes back
+
+Everything from a normal transcription, plus two arrays:
+
+```json
+{
+  "text": "сәлеметсіз бе бүгін ауа райы өте жақсы",
+  "model": "seta-kk-ru-v2",
+  "audio_seconds": 45.1,
+  "credits_charged": 113,
+
+  "words": [
+    { "word": "сәлеметсіз", "start": 0.2,  "end": 0.72 },
+    { "word": "бе",         "start": 0.84, "end": 1.12 }
+  ],
+
+  "segments": [
+    { "id": 0, "text": "сәлеметсіз бе",  "start": 0.2,  "end": 1.12 },
+    { "id": 1, "text": "бүгін ауа райы", "start": 15.4, "end": 17.9 }
+  ]
+}
+```
+
+<ResponseField name="words" type="Word[]">
+  Every word in the transcript, in order.
+
+  <Expandable title="Word">
+    <ResponseField name="word" type="string">
+      The word. Lowercase and unpunctuated, like the rest of the transcript.
+    </ResponseField>
+    <ResponseField name="start" type="number">
+      Seconds from the **start of the audio** — not from the start of a segment.
+    </ResponseField>
+    <ResponseField name="end" type="number">
+      Seconds from the start of the audio.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="segments" type="Segment[]">
+  The transcript grouped into runs of speech, split at the pauses used to chunk long audio.
+
+  <Expandable title="Segment">
+    <ResponseField name="id" type="number">Zero-based index, in playback order.</ResponseField>
+    <ResponseField name="text" type="string">Text of this run.</ResponseField>
+    <ResponseField name="start" type="number">The first word's `start`.</ResponseField>
+    <ResponseField name="end" type="number">The last word's `end`.</ResponseField>
+  </Expandable>
+</ResponseField>
+
+<Warning>
+  Both fields are **absent** unless you pass the flag — not empty, absent. That is deliberate: adding timestamps can never change the response shape for code that did not ask for them. In TypeScript they are optional, so reach for `out.words ?? []`.
+</Warning>
+
+## words or segments?
+
+| You are building | Use | Why |
+| --- | --- | --- |
+| Subtitles, captions | `segments` | One cue per word is unwatchable |
+| Click-a-word-to-seek transcript UI | `words` | You need per-word boundaries |
+| Keyword search in a recording | `words` | Jump to the exact hit |
+| Talk-time / silence analysis | `segments` | The gaps between runs are the pauses |
+| Aligning to a waveform | either | `words` for detail, `segments` for structure |
+
+## subtitles
+
+`toSubtitles()` formats a transcription as SubRip (`.srt`) or WebVTT (`.vtt`). It is a pure function — no client, no API key, no request.
+
+<CodeGroup>
+```ts TypeScript
+import { toSubtitles } from "@gekoai/sdk";
+import { writeFile } from "node:fs/promises";
+
+const out = await geko.stt.transcribe({ audio, timestamps: true });
+
+await writeFile("call.srt", toSubtitles(out));         // SubRip
+await writeFile("call.vtt", toSubtitles(out, "vtt"));  // WebVTT
+```
+
+```bash CLI
+npx @gekoai/sdk transcribe call.wav --srt > call.srt
+npx @gekoai/sdk transcribe call.wav --vtt > call.vtt
+```
+
+```bash OpenAI-compatible
+# response_format works exactly as it does on Whisper
+curl -X POST ".../v1/audio/transcriptions" \
+  -H "Authorization: Bearer $GEKO_API_KEY" \
+  -F file=@call.wav \
+  -F response_format=srt
+```
+</CodeGroup>
+
+```srt
+1
+00:00:00,200 --> 00:00:01,120
+сәлеметсіз бе
+
+2
+00:00:15,400 --> 00:00:17,900
+бүгін ауа райы
+```
+
+On the [OpenAI-compatible endpoint](/stt/openai), `response_format=verbose_json` also returns `segments` and `words`, so Whisper code that already reads them keeps working.
+
+## how the alignment works
+
+Seta is a **CTC** model. It reads the audio as a sequence of frames and emits a token — or a blank — for each one, so the frame index at which a token is emitted *is* its position in time. Grouping those tokens into words and multiplying by the frame duration gives the boundaries. Nothing is estimated after the fact and no second pass runs, which is why the feature is free.
+
+Audio longer than about 20 seconds is split at pauses before decoding. Each piece is timed independently and then **shifted back into the timeline of the whole file**, so `start` and `end` are always measured from the beginning of your audio, whatever its length.
+
+<Note>
+  Precision is bounded by the frame rate, so treat boundaries as accurate to a few tens of milliseconds — right for subtitles, search and seeking. It is not phoneme-level forced alignment.
+</Note>
+
+Two consequences worth knowing:
+
+- **Boundaries sit on speech, not silence.** A segment starts at its first word and ends at its last, so the pause between segments is real silence.
+- **A word's `end` and the next word's `start` differ.** The gap is the actual pause between them, not padding.
+
+## limits
+
+| | |
+| --- | --- |
+| **Extra cost** | none — billed on `audio_seconds` either way |
+| **Max duration** | 2 hours per request, same as any transcription |
+| **Precision** | tens of milliseconds |
+| **Speaker labels** | not yet — diarization is on the [roadmap](/roadmap) |
+
+<CardGroup cols={2}>
+  <Card title="Drop-in for Whisper" icon="right-left" href="/stt/openai">
+    `verbose_json`, `srt` and `vtt` all work on the OpenAI-compatible route.
+  </Card>
+  <Card title="Accuracy" icon="chart-line" href="/stt/accuracy">
+    8.71% WER on KSC2, including code-switched speech.
+  </Card>
+</CardGroup>

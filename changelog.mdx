@@ -5,6 +5,20 @@ description: "notable changes to the Geko API and SDK."
 
 The SDK follows [semantic versioning](https://semver.org). The authoritative SDK changelog lives in [`CHANGELOG.md`](https://github.com/gekoai/geko-ts-sdk/blob/main/CHANGELOG.md).
 
+## API — word-level timestamps
+
+- **`POST /v1/transcribe?timestamps=true`** now also returns `words` (`{ word, start, end }`) and `segments` (`{ id, text, start, end }`), in seconds from the start of the audio. See [word-level timestamps](/stt/timestamps).
+- **Free.** The alignment is a by-product of the same CTC decode pass; billing is unchanged at `ceil(audio_seconds × 2.5)`.
+- **Opt-in.** Both fields are absent unless requested, so no existing caller's response shape changes.
+- Long audio is split at pauses before decoding, and each piece's times are shifted back into the timeline of the whole file — so `start`/`end` are always measured from the beginning of your audio.
+- **OpenAI-compatible endpoint:** `response_format=srt` and `vtt` now return real subtitles instead of `400`, and `verbose_json` returns populated `segments` and `words`.
+
+## SDK `0.5.0`
+
+- **`transcribe({ timestamps: true })`** surfaces `words` and `segments`. New exported types `Word` and `TranscriptSegment`.
+- **`toSubtitles(transcription, "srt" | "vtt")`** — pure formatter, exported standalone and as `geko.stt.toSubtitles()`. Uses `segments`, because one cue per word is unwatchable.
+- **CLI:** `transcribe --words` prints `start<TAB>end<TAB>word`; `--srt` / `--vtt` print subtitles.
+
 ## SDK `0.4.0`
 
 - **Speech-to-text:** [`geko.stt.transcribe({ audio })`](/sdk/typescript) or `{ url }` → the transcript plus timing and the credits actually charged. Backed by `seta-kk-ru-v2`, which handles Kazakh/Russian **code-switching** at 8.71% WER on the KSC2 official test set, where Whisper large-v3 scores 44.95% on the same audio. See [accuracy](/stt/accuracy).

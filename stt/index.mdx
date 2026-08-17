@@ -15,6 +15,9 @@ Your existing key works. **One API key covers text-to-speech and speech-to-text,
   <Card title="Drop-in for Whisper" icon="right-left" href="/stt/openai">
     Change `baseURL` on your OpenAI client. That's the whole migration.
   </Card>
+  <Card title="Word timestamps" icon="clock" href="/stt/timestamps">
+    Every word with a start and end. One flag, no extra cost, subtitles included.
+  </Card>
 </CardGroup>
 
 ## try it in one line
@@ -91,6 +94,8 @@ const { text } = await geko.stt.transcribe({ url: "https://example.com/call.mp3"
 <Note>
   Transcripts are **lowercase and unpunctuated**. That is not post-processing — the model's output vocabulary contains no capitals and no punctuation, so nothing is being stripped. Punctuation and truecasing are on the [roadmap](/roadmap).
 </Note>
+
+Need to know *when* each word was said? Add `?timestamps=true` and you also get `words` and `segments` with start/end times — see [word-level timestamps](/stt/timestamps).
 
 ## why there is no `language` parameter
 

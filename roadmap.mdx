@@ -25,11 +25,9 @@ Transcripts today are lowercase and unpunctuated — not stripped, but a propert
 
 _Today: plan for lowercase, unpunctuated text, or post-process it yourself._
 
-## Word / character timestamps
+## Character timestamps and diarization
 
-Optional alignment data for captions, subtitles, and highlight-as-it-speaks UIs — on both directions.
-
-_This is also why `srt` and `vtt` return `400` on the transcription endpoint today: a character-CTC model has no word-level timings to emit, and `verbose_json` returns an empty `segments` array rather than invent them._
+Word-level timestamps for **speech-to-text shipped** — see [word-level timestamps](/stt/timestamps). Still ahead: sub-word (character) alignment, alignment on the **text-to-speech** side for highlight-as-it-speaks UIs, and **speaker diarization** so multi-party recordings can be attributed.
 
 ## Python SDK
 

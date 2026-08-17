@@ -51,7 +51,9 @@ description: "common questions and fixes."
 </Accordion>
 
 <Accordion title="Can I get word-level timestamps or subtitles?">
-  Not yet. `seta-kk-ru-v2` is a character-CTC model with no word-level alignment to emit, which is why `srt`/`vtt` return `400` rather than silently handing back JSON, and `verbose_json` returns an empty `segments` array. Timestamps are on the [roadmap](/roadmap).
+  Yes. Add `?timestamps=true` and the response gains `words` (`{ word, start, end }`) and `segments`, in seconds from the start of the audio. It costs nothing extra — the alignment is a by-product of the same decode pass, and you are billed on `audio_seconds` either way. For subtitles use `toSubtitles()` in the SDK, or `response_format=srt` / `vtt` on the [OpenAI-compatible endpoint](/stt/openai). Full details: [word-level timestamps](/stt/timestamps).
+
+  Speaker labels (diarization) are not included yet — that is on the [roadmap](/roadmap).
 </Accordion>
 
 <Accordion title="Is there a Python SDK?">

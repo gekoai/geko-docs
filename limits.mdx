@@ -32,7 +32,7 @@ For longer inputs, split on sentence/paragraph boundaries and synthesize in para
 
 **Output format.** JSON. Transcripts are **lowercase and unpunctuated** — the model's output vocabulary contains no capitals and no punctuation, so nothing is being stripped. Punctuation and truecasing are on the [roadmap](/roadmap).
 
-`srt` and `vtt` on the OpenAI-compatible endpoint return **`400`**, and `verbose_json` returns an empty `segments` array: a character-CTC model has no word-level timestamps to emit. See [OpenAI compatibility](/stt/openai).
+**Word timestamps.** Add `?timestamps=true` for `words` and `segments` with start/end times in seconds — free, since the alignment comes out of the same decode pass. `srt`, `vtt` and `verbose_json` all work on the OpenAI-compatible endpoint. Precision is tens of milliseconds; speaker diarization is on the [roadmap](/roadmap). See [word-level timestamps](/stt/timestamps).
 
 There is deliberately **no `language` parameter** — see [the STT overview](/stt) for why.
 

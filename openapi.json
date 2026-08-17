@@ -3,7 +3,7 @@
   "info": {
     "title": "geko API",
     "version": "1.0.0",
-    "description": "Text-to-speech for Kazakh and beyond. Send text and a voice name; get back WAV audio (24 kHz, 16-bit PCM, mono). A thin, familiar HTTP API — call it from any language, or use the typed SDK and CLI.\n\nThe catalog endpoints (`/v1/models`, `/v1/voices`, `/health`) are open. Synthesis endpoints require a bearer key — create one in the [console](https://app.geko.sh)."
+    "description": "Text-to-speech for Kazakh and beyond. Send text and a voice name; get back WAV audio (24 kHz, 16-bit PCM, mono). A thin, familiar HTTP API \u2014 call it from any language, or use the typed SDK and CLI.\n\nThe catalog endpoints (`/v1/models`, `/v1/voices`, `/health`) are open. Synthesis endpoints require a bearer key \u2014 create one in the [console](https://app.geko.sh)."
   },
   "servers": [
     {
@@ -36,6 +36,16 @@
           }
         ],
         "parameters": [
+          {
+            "name": "timestamps",
+            "in": "query",
+            "required": false,
+            "description": "Also return `words` and `segments` with start/end times in seconds. Absent from the response unless requested. No extra cost.",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
           {
             "name": "url",
             "in": "query",
@@ -84,7 +94,7 @@
             "description": "The transcript, with timing and the credits charged.",
             "headers": {
               "X-Seta-Audio-Seconds": {
-                "description": "Duration of the submitted audio — what you were billed for.",
+                "description": "Duration of the submitted audio \u2014 what you were billed for.",
                 "schema": {
                   "type": "number"
                 }
@@ -141,7 +151,7 @@
             }
           },
           "429": {
-            "description": "Out of credits — top up in the console.",
+            "description": "Out of credits \u2014 top up in the console.",
             "content": {
               "application/json": {
                 "schema": {
@@ -168,7 +178,7 @@
       "post": {
         "operationId": "createTranscriptionOpenAI",
         "summary": "Transcribe speech (OpenAI-compatible)",
-        "description": "Drop-in replacement for OpenAI's transcription endpoint — an existing client changes only its `baseURL`. `language`, `prompt` and `temperature` are accepted and ignored: the model shares one Kazakh+Russian vocabulary, so it is never told which language to expect. `srt` and `vtt` return 400, because a character-CTC model produces no word timings.",
+        "description": "Drop-in replacement for OpenAI's transcription endpoint \u2014 an existing client changes only its `baseURL`. `language`, `prompt` and `temperature` are accepted and ignored: the model shares one Kazakh+Russian vocabulary, so it is never told which language to expect. `srt` and `vtt` return 400, because a character-CTC model produces no word timings.",
         "tags": [
           "Speech-to-text"
         ],
@@ -201,9 +211,12 @@
                     "enum": [
                       "json",
                       "text",
-                      "verbose_json"
+                      "verbose_json",
+                      "srt",
+                      "vtt"
                     ],
-                    "default": "json"
+                    "default": "json",
+                    "description": "`json` (default) returns `{text}`. `text` returns the bare transcript. `verbose_json` adds `segments` and `words`. `srt` and `vtt` return subtitles."
                   },
                   "language": {
                     "type": "string",
@@ -267,7 +280,7 @@
             }
           },
           "429": {
-            "description": "Out of credits — top up in the console.",
+            "description": "Out of credits \u2014 top up in the console.",
             "content": {
               "application/json": {
                 "schema": {
@@ -343,12 +356,12 @@
           {
             "lang": "TypeScript",
             "label": "SDK",
-            "source": "import { Geko } from \"@gekoai/sdk\";\nimport { writeFile } from \"node:fs/promises\";\n\nconst geko = new Geko({ apiKey: process.env.GEKO_API_KEY });\n\nconst audio = await geko.tts.create({\n  text: \"Сәлеметсіз бе! Тапсырыс нөмірі 152.\",\n  voice: \"Aigerim\",\n});\n\nawait writeFile(\"hello.wav\", Buffer.from(audio));"
+            "source": "import { Geko } from \"@gekoai/sdk\";\nimport { writeFile } from \"node:fs/promises\";\n\nconst geko = new Geko({ apiKey: process.env.GEKO_API_KEY });\n\nconst audio = await geko.tts.create({\n  text: \"\u0421\u04d9\u043b\u0435\u043c\u0435\u0442\u0441\u0456\u0437 \u0431\u0435! \u0422\u0430\u043f\u0441\u044b\u0440\u044b\u0441 \u043d\u04e9\u043c\u0456\u0440\u0456 152.\",\n  voice: \"Aigerim\",\n});\n\nawait writeFile(\"hello.wav\", Buffer.from(audio));"
           },
           {
             "lang": "Python",
             "label": "requests",
-            "source": "import os, requests\n\nres = requests.post(\n    \"https://geko--tokay-serve-web.modal.run/v1/tts\",\n    headers={\"Authorization\": f\"Bearer {os.environ['GEKO_API_KEY']}\"},\n    json={\"text\": \"Сәлеметсіз бе! Тапсырыс нөмірі 152.\", \"voice\": \"Aigerim\"},\n)\nres.raise_for_status()\nwith open(\"hello.wav\", \"wb\") as f:\n    f.write(res.content)"
+            "source": "import os, requests\n\nres = requests.post(\n    \"https://geko--tokay-serve-web.modal.run/v1/tts\",\n    headers={\"Authorization\": f\"Bearer {os.environ['GEKO_API_KEY']}\"},\n    json={\"text\": \"\u0421\u04d9\u043b\u0435\u043c\u0435\u0442\u0441\u0456\u0437 \u0431\u0435! \u0422\u0430\u043f\u0441\u044b\u0440\u044b\u0441 \u043d\u04e9\u043c\u0456\u0440\u0456 152.\", \"voice\": \"Aigerim\"},\n)\nres.raise_for_status()\nwith open(\"hello.wav\", \"wb\") as f:\n    f.write(res.content)"
           }
         ]
       }
@@ -357,7 +370,7 @@
       "post": {
         "operationId": "streamSpeech",
         "summary": "Stream speech sentence-by-sentence",
-        "description": "Same request body as `POST /v1/tts`, but the response is delivered as each sentence finishes synthesizing — lower time-to-first-audio on long text. Auth and metering are identical to `/v1/tts`.\n\nThe body is a sequence of **frames**: a 4-byte big-endian length, followed by that many bytes of one complete WAV. Read a length, read that many bytes (one playable WAV chunk), repeat until the stream closes. The `X-Tokay-Stream: wav-frames-v1` header identifies the framing. Most callers should use the SDK's `geko.tts.stream()`, which wraps this as an async iterable — see the [streaming guide](/guides/streaming).",
+        "description": "Same request body as `POST /v1/tts`, but the response is delivered as each sentence finishes synthesizing \u2014 lower time-to-first-audio on long text. Auth and metering are identical to `/v1/tts`.\n\nThe body is a sequence of **frames**: a 4-byte big-endian length, followed by that many bytes of one complete WAV. Read a length, read that many bytes (one playable WAV chunk), repeat until the stream closes. The `X-Tokay-Stream: wav-frames-v1` header identifies the framing. Most callers should use the SDK's `geko.tts.stream()`, which wraps this as an async iterable \u2014 see the [streaming guide](/guides/streaming).",
         "tags": [
           "Speech"
         ],
@@ -420,7 +433,7 @@
       "post": {
         "operationId": "createSpeechOpenAICompatible",
         "summary": "OpenAI-compatible speech",
-        "description": "OpenAI-compatible alias — point the OpenAI SDK at geko by swapping the base URL and model. Maps OpenAI's request shape onto the Tokay engine. See the [OpenAI compatibility guide](/guides/openai).",
+        "description": "OpenAI-compatible alias \u2014 point the OpenAI SDK at geko by swapping the base URL and model. Maps OpenAI's request shape onto the Tokay engine. See the [OpenAI compatibility guide](/guides/openai).",
         "tags": [
           "Speech"
         ],
@@ -460,7 +473,7 @@
           {
             "lang": "Python",
             "label": "openai",
-            "source": "from openai import OpenAI\n\nclient = OpenAI(\n    base_url=\"https://geko--tokay-serve-web.modal.run/v1\",\n    api_key=os.environ[\"GEKO_API_KEY\"],\n)\n\nres = client.audio.speech.create(\n    model=\"tts-1\",\n    voice=\"Aigerim\",\n    input=\"Сәлеметсіз бе!\",\n    response_format=\"wav\",\n)\nres.write_to_file(\"hello.wav\")"
+            "source": "from openai import OpenAI\n\nclient = OpenAI(\n    base_url=\"https://geko--tokay-serve-web.modal.run/v1\",\n    api_key=os.environ[\"GEKO_API_KEY\"],\n)\n\nres = client.audio.speech.create(\n    model=\"tts-1\",\n    voice=\"Aigerim\",\n    input=\"\u0421\u04d9\u043b\u0435\u043c\u0435\u0442\u0441\u0456\u0437 \u0431\u0435!\",\n    response_format=\"wav\",\n)\nres.write_to_file(\"hello.wav\")"
           }
         ]
       }
@@ -469,7 +482,7 @@
       "get": {
         "operationId": "listModels",
         "summary": "List models",
-        "description": "List the models on the platform and their voices. **Open** — no API key required.",
+        "description": "List the models on the platform and their voices. **Open** \u2014 no API key required.",
         "tags": [
           "Catalog"
         ],
@@ -492,7 +505,7 @@
       "get": {
         "operationId": "listVoices",
         "summary": "List voices",
-        "description": "The voice catalog for a model. **Open** — no API key required.",
+        "description": "The voice catalog for a model. **Open** \u2014 no API key required.",
         "tags": [
           "Catalog"
         ],
@@ -527,7 +540,7 @@
       "get": {
         "operationId": "health",
         "summary": "Service status",
-        "description": "Liveness probe. **Open** — no API key required.",
+        "description": "Liveness probe. **Open** \u2014 no API key required.",
         "tags": [
           "Catalog"
         ],
@@ -552,12 +565,12 @@
       "bearerAuth": {
         "type": "http",
         "scheme": "bearer",
-        "description": "Your geko API key (`sk-tokay-…`). Create and manage keys in the [console](https://app.geko.sh)."
+        "description": "Your geko API key (`sk-tokay-\u2026`). Create and manage keys in the [console](https://app.geko.sh)."
       }
     },
     "responses": {
       "BadRequest": {
-        "description": "Bad request — missing `text`, malformed body, or an invalid value.",
+        "description": "Bad request \u2014 missing `text`, malformed body, or an invalid value.",
         "content": {
           "application/json": {
             "schema": {
@@ -596,20 +609,20 @@
         }
       },
       "OutOfCredits": {
-        "description": "Out of credits — top up in the console. Not retried by the SDK.",
+        "description": "Out of credits \u2014 top up in the console. Not retried by the SDK.",
         "content": {
           "application/json": {
             "schema": {
               "$ref": "#/components/schemas/Error"
             },
             "example": {
-              "detail": "out of credits — top up in the geko console"
+              "detail": "out of credits \u2014 top up in the geko console"
             }
           }
         }
       },
       "Unavailable": {
-        "description": "Auth backend temporarily unavailable (transient — retry).",
+        "description": "Auth backend temporarily unavailable (transient \u2014 retry).",
         "content": {
           "application/json": {
             "schema": {
@@ -632,7 +645,7 @@
           "text": {
             "type": "string",
             "description": "Text to synthesize (up to ~5000 characters).",
-            "example": "Сәлеметсіз бе! Тапсырыс нөмірі 152, сомасы 5500 ₸."
+            "example": "\u0421\u04d9\u043b\u0435\u043c\u0435\u0442\u0441\u0456\u0437 \u0431\u0435! \u0422\u0430\u043f\u0441\u044b\u0440\u044b\u0441 \u043d\u04e9\u043c\u0456\u0440\u0456 152, \u0441\u043e\u043c\u0430\u0441\u044b 5500 \u20b8."
           },
           "model": {
             "type": "string",
@@ -672,7 +685,7 @@
           "input": {
             "type": "string",
             "description": "Text to synthesize.",
-            "example": "Сәлеметсіз бе!"
+            "example": "\u0421\u04d9\u043b\u0435\u043c\u0435\u0442\u0441\u0456\u0437 \u0431\u0435!"
           },
           "model": {
             "type": "string",
@@ -711,8 +724,8 @@
         "properties": {
           "text": {
             "type": "string",
-            "description": "The transcript. Lowercase and unpunctuated — the model's vocabulary contains neither, so nothing is being stripped.",
-            "example": "сәлеметсіз бе бүгін ауа райы өте жақсы"
+            "description": "The transcript. Lowercase and unpunctuated \u2014 the model's vocabulary contains neither, so nothing is being stripped.",
+            "example": "\u0441\u04d9\u043b\u0435\u043c\u0435\u0442\u0441\u0456\u0437 \u0431\u0435 \u0431\u04af\u0433\u0456\u043d \u0430\u0443\u0430 \u0440\u0430\u0439\u044b \u04e9\u0442\u0435 \u0436\u0430\u049b\u0441\u044b"
           },
           "model": {
             "type": "string",
@@ -751,8 +764,22 @@
           },
           "credits_charged": {
             "type": "integer",
-            "description": "Credits billed: ceil(audio_seconds × 2.5).",
+            "description": "Credits billed: ceil(audio_seconds \u00d7 2.5).",
             "example": 8
+          },
+          "words": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Word"
+            },
+            "description": "Every word with start/end. Present only when `timestamps=true`."
+          },
+          "segments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TranscriptSegment"
+            },
+            "description": "Transcript grouped into runs of speech. Present only when `timestamps=true`."
           }
         }
       },
@@ -865,6 +892,67 @@
             "example": [
               "tokay-kk-v1"
             ]
+          }
+        }
+      },
+      "Word": {
+        "type": "object",
+        "required": [
+          "word",
+          "start",
+          "end"
+        ],
+        "description": "One word, located in time.",
+        "properties": {
+          "word": {
+            "type": "string",
+            "description": "The word. Lowercase and unpunctuated, like the rest of the transcript.",
+            "example": "\u0441\u04d9\u043b\u0435\u043c\u0435\u0442\u0441\u0456\u0437"
+          },
+          "start": {
+            "type": "number",
+            "format": "float",
+            "description": "Seconds from the start of the audio.",
+            "example": 0.2
+          },
+          "end": {
+            "type": "number",
+            "format": "float",
+            "description": "Seconds from the start of the audio.",
+            "example": 0.72
+          }
+        }
+      },
+      "TranscriptSegment": {
+        "type": "object",
+        "required": [
+          "id",
+          "text",
+          "start",
+          "end"
+        ],
+        "description": "A run of speech between two pauses. Use these for subtitles.",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Zero-based index, in playback order.",
+            "example": 0
+          },
+          "text": {
+            "type": "string",
+            "example": "\u0441\u04d9\u043b\u0435\u043c\u0435\u0442\u0441\u0456\u0437 \u0431\u0435"
+          },
+          "start": {
+            "type": "number",
+            "format": "float",
+            "description": "The first word's start.",
+            "example": 0.2
+          },
+          "end": {
+            "type": "number",
+            "format": "float",
+            "description": "The last word's end.",
+            "example": 1.12
           }
         }
       }
