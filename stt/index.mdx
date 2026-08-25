@@ -138,6 +138,9 @@ Out of credits returns **HTTP 429** on *both* products, since it is one balance.
 Warm, a short clip transcribes in **~0.15 s** (about 18× real time). The GPU scales to zero when idle, so the **first** request after a quiet period pays a cold start of roughly 20–30 s — and the first transcription in a fresh container costs ~1.9 s while CUDA kernels warm up. If you need predictable latency for a demo or a call window, ask us to pin a warm container.
 
 <CardGroup cols={2}>
+  <Card title="Live streaming" icon="tower-broadcast" href="/stt/streaming">
+    Transcribe over a WebSocket while the speaker is still talking.
+  </Card>
   <Card title="Accuracy & benchmarks" icon="chart-line" href="/stt/accuracy">
     Per-domain WER, telephony, and comparisons against Whisper and ISSAI.
   </Card>

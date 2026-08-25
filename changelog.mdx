@@ -5,6 +5,21 @@ description: "notable changes to the Geko API and SDK."
 
 The SDK follows [semantic versioning](https://semver.org). The authoritative SDK changelog lives in [`CHANGELOG.md`](https://github.com/gekoai/geko-ts-sdk/blob/main/CHANGELOG.md).
 
+## API — live streaming transcription
+
+- **New WebSocket endpoint** `wss://geko--seta-stream-streamer-api.modal.run/v1/stream` transcribes speech as it is spoken, emitting `partial` results while someone is still talking and `final` ones that are never revised. See [streaming](/stt/streaming).
+- Runs as a **separate service** from file transcription, so the two scale independently and a streaming incident cannot take `/v1/transcribe` down with it. Same API key, same credit balance.
+- Audio is **PCM16-LE, mono, 16 kHz**. Nothing is resampled server-side.
+- **Priced at 6 credits/audio-second ($0.864/audio-hour)**, against 2.5 ($0.36/audio-hour) for files. Keeping a partial transcript current re-decodes uncommitted audio on every update, so a second of speech passes through the model roughly six times. **If you have a file, `POST /v1/transcribe` is more accurate and a third of the price.**
+- Billed on audio accepted, once, when the socket closes — including on an abrupt disconnect.
+
+## SDK `0.6.0`
+
+- **`geko.stt.stream()`** opens a session: `send()` audio, iterate it for events, `stop()` when the audio ends. New `SttStream` export and `SttStream*` event types.
+- **`geko.stt.estimateStreamCredits(seconds)`** prices a stream before you spend it.
+- Still zero-dependency: uses the platform `WebSocket`. Node 20 has none (stable in Node 22) — upgrade, or pass `{ webSocket }`.
+- `openTimeout` defaults to 60s, because the service scales to zero and a first connection after idle waits ~15–25s for a cold start.
+
 ## API — word-level timestamps
 
 - **`POST /v1/transcribe?timestamps=true`** now also returns `words` (`{ word, start, end }`) and `segments` (`{ id, text, start, end }`), in seconds from the start of the audio. See [word-level timestamps](/stt/timestamps).

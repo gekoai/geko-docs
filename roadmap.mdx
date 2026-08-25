@@ -35,11 +35,11 @@ A `geko` Python package mirroring this SDK's surface (`geko.tts.create(...)`, `g
 
 _Today the official SDK is TypeScript/JavaScript (`@gekoai/sdk`); Python callers can use the OpenAI-compatible endpoints or raw HTTP._
 
-## Streaming transcription
+## Chunked-causal streaming
 
-Incremental decoding, so a transcript arrives while the speaker is still talking rather than after the turn ends.
+[Live streaming transcription](/stt/streaming) has shipped. What is still ahead is making it cheaper: today a partial transcript is kept current by re-decoding the uncommitted audio on every update, which is why streaming is priced above file transcription.
 
-_Today transcription is offline: send a complete clip, get the whole transcript. It's fast enough (~18× real time warm) that turn-based voice agents work well — see [Voice agents](/guides/voice-agents)._
+A cache-aware, chunked-causal encoder would decode each frame once instead, bringing streaming cost close to batch. That needs a fine-tune with chunked attention masking and a fresh accuracy benchmark, so it is a project rather than a patch.
 
 ## Speaker diarization
 

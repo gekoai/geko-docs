@@ -1,0 +1,101 @@
+---
+title: "live streaming transcription"
+sidebarTitle: "streaming"
+description: "transcribe speech as it is spoken over a websocket. partial results while someone is still talking, finals you can keep."
+---
+
+Send audio while it is being spoken and get transcripts back before the speaker finishes. Built for the case where waiting is not an option — a voice agent that has to answer, or live captions.
+
+<Warning>
+  **If you have a file, don't use this.** [`transcribe()`](/stt) is more accurate on long audio — the model sees whole utterances instead of a growing tail — and costs **a third as much**. Streaming exists for live audio, not for convenience.
+</Warning>
+
+## The endpoint
+
+```
+wss://geko--seta-stream-streamer-api.modal.run/v1/stream
+```
+
+Authenticate with the same `sk-tokay-…` key as everything else, either as an `Authorization: Bearer …` header or — since browsers cannot set headers on a WebSocket — as a `?key=` query parameter.
+
+Audio must be **PCM16-LE, mono, 16 kHz**. Nothing is resampled server-side: guessing the sample rate of a raw byte stream is how audio ends up silently transcribed at the wrong pitch. Resample before you send.
+
+## TypeScript
+
+```ts
+import { Geko } from "@gekoai/sdk";
+
+const geko = new Geko({ apiKey: process.env.GEKO_API_KEY });
+const stream = await geko.stt.stream();
+
+// Read results in one place…
+(async () => {
+  for await (const event of stream) {
+    if (event.type === "partial") process.stdout.write(`\r${event.text}`);
+    if (event.type === "final") console.log(`\n${event.text}`);
+    if (event.type === "done") console.log(`billed ${event.credits_charged} credits`);
+  }
+})();
+
+// …push audio from another.
+for await (const chunk of microphone) stream.send(chunk);
+stream.stop();
+```
+
+<Note>
+  Node 20 has no global `WebSocket` — it stabilised in Node 22. On Node 20 either upgrade or pass one in: `geko.stt.stream({ webSocket: (await import("ws")).WebSocket })`. The SDK itself stays dependency-free.
+</Note>
+
+## Partials and finals
+
+Two kinds of result arrive, and the difference matters:
+
+| event | meaning |
+| --- | --- |
+| `partial` | a running guess at audio that has **not been committed yet**. It **will** be replaced by a later partial or final. Render it; never store it. |
+| `final` | a committed span of transcript, with `start` and `end` in seconds from the start of the stream. **Never revised.** Append these and you have the transcript. |
+| `done` | sent after `stop`, carrying the full text, the audio duration, and the credits charged. |
+
+A `final` is emitted when the speaker pauses. That is also what keeps the cost bounded: once a span is committed it is never re-examined, so a ten-minute call costs no more per minute than a ten-second one.
+
+## Wire protocol
+
+If you are not using the SDK:
+
+```
+client →  connect with Authorization: Bearer sk-tokay-…   (or ?key=…)
+server →  {"type":"ready","model":"seta-kk-ru-v2","sample_rate":16000}
+client →  binary frames: PCM16-LE, mono, 16 kHz
+server →  {"type":"partial","text":"…"}
+server →  {"type":"final","text":"…","start":12.5,"end":15.8}
+client →  {"type":"stop"}
+server →  {"type":"done","text":"…","audio_seconds":90.5,"credits_charged":543}
+server →  {"type":"error","message":"…"}
+```
+
+An invalid or missing key is refused at the handshake with **HTTP 403**, before the socket opens.
+
+## Cold starts
+
+The service scales to zero, so **the first connection after an idle period waits ~15–25 seconds** while a container boots and loads the model. Connections after that are fast — the first partial typically arrives ~1.5s in.
+
+Two consequences worth designing for:
+
+- **Set a generous handshake timeout.** Many WebSocket clients default to 10s, which is not enough to survive a cold start. The SDK defaults to 60s and exposes `openTimeout`.
+- **For a demo or a call window, ask us to pin a warm container.** It removes the cold start entirely. [Get in touch](mailto:amirlan@geko.sh).
+
+## Pricing
+
+**6 credits per audio-second — $0.864 per hour of audio**, against $0.36/hour for file transcription. Billed on audio **accepted**, once, when the socket closes — including if your client disconnects without sending `stop`.
+
+```ts
+geko.stt.estimateStreamCredits(3600); // 21600 credits === $0.864
+```
+
+The difference is a cost difference, not a surcharge: see [why streaming costs more](/billing#why-streaming-costs-more).
+
+## Limits
+
+- One socket is one call. Long calls are fine; the connection may stay open for up to an hour.
+- Audio not committed before you disconnect is still billed — the server accepted it.
+- Transcripts are lowercase and unpunctuated, as with file transcription: the model's output vocabulary contains neither. See [accuracy](/stt/accuracy).
