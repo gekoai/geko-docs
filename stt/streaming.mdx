@@ -58,6 +58,8 @@ Two kinds of result arrive, and the difference matters:
 
 A `final` is emitted when the speaker pauses. That is also what keeps the cost bounded: once a span is committed it is never re-examined, so a ten-minute call costs no more per minute than a ten-second one.
 
+**How quickly they arrive.** A new `partial` is emitted every **0.5s** of speech, and a `final` lands about **0.05s** after the pause that triggers it. Both are measured on a warm connection against 16 kHz audio fed at real time; a client that sends larger audio frames cannot receive partials faster than it sends, so 250ms frames or smaller are recommended.
+
 ## Wire protocol
 
 If you are not using the SDK:
@@ -77,7 +79,7 @@ An invalid or missing key is refused at the handshake with **HTTP 403**, before 
 
 ## Cold starts
 
-The service scales to zero, so **the first connection after an idle period waits ~15–25 seconds** while a container boots and loads the model. Connections after that are fast — the first partial typically arrives ~1.5s in.
+The service scales to zero, so **the first connection after an idle period waits ~15–25 seconds** while a container boots and loads the model. Connections after that open in well under a second, and the first partial arrives about 1s in — a little behind the steady-state 0.5s cadence, because the opening moments of a stream rarely contain enough speech to decode into words yet.
 
 Two consequences worth designing for:
 
