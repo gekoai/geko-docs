@@ -26,7 +26,7 @@ Audio must be **PCM16-LE, mono, 16 kHz**. Nothing is resampled server-side: gues
 import { Geko } from "@gekoai/sdk";
 
 const geko = new Geko({ apiKey: process.env.GEKO_API_KEY });
-const stream = await geko.stt.stream();
+const stream = await geko.stt.stream({ endOfUtteranceMs: 200 }); // optional, see below
 
 // Read results in one place…
 (async () => {
@@ -56,9 +56,27 @@ Two kinds of result arrive, and the difference matters:
 | `final` | a committed span of transcript, with `start` and `end` in seconds from the start of the stream. **Never revised.** Append these and you have the transcript. |
 | `done` | sent after `stop`, carrying the full text, the audio duration, and the credits charged. |
 
-A `final` is emitted when the speaker pauses. That is also what keeps the cost bounded: once a span is committed it is never re-examined, so a ten-minute call costs no more per minute than a ten-second one.
+A `final` is emitted when the speaker stops — **however short the reply was**. A one-word "да" finalizes exactly like a full sentence. Committing is also what keeps the cost bounded: once a span is committed it is never re-examined, so a ten-minute call costs no more per minute than a ten-second one.
 
-**How quickly they arrive.** A new `partial` is emitted every **0.5s** of speech, and a `final` lands about **0.05s** after the pause that triggers it. Both are measured on a warm connection against 16 kHz audio fed at real time; a client that sends larger audio frames cannot receive partials faster than it sends, so 250ms frames or smaller are recommended.
+**How quickly they arrive.** A new `partial` is emitted every **0.5s** of speech. A `final` fires once the speaker has been silent for the **end-of-utterance threshold**, plus roughly 50ms of decode. Set the threshold yourself (see below) and one value applies at every utterance length — at 200ms, a final lands ~250ms after the last word, one-word replies included. Leave it unset and an accuracy-first adaptive default applies: 350ms, or 700ms for replies under ~2 seconds, a split measured to leave transcription accuracy unchanged. Measured on a warm connection against 16 kHz audio fed at real time; a client that sends larger audio frames cannot receive results faster than it sends, so 250ms frames or smaller are recommended.
+
+Every `partial` and `final` also carries **`audio_to`** — how far into the audio you have sent the transcript has reached, in seconds. Comparing it with how much you have sent shows whether the transcript is keeping up with the speech, which lets an agent decide when it is safe to act **without waiting for the end-of-utterance call at all**.
+
+## Tuning end of utterance
+
+The threshold is yours to set, per connection — it is the wait between your caller going quiet and their words arriving as a `final`, so it sits directly in your response time:
+
+```ts
+// at connect
+const stream = await geko.stt.stream({ endOfUtteranceMs: 200 });
+
+// or mid-call, e.g. after discovering the line is noisy
+stream.setEndOfUtterance(400);
+```
+
+Without the SDK: `?end_of_utterance_ms=200` on the connection URL, or send `{"type":"config","end_of_utterance_ms":200}` at any time — the server acknowledges with the value that took effect.
+
+The server clamps to **100–2000ms** and echoes the value that took effect in `ready`, so you never have to assume. Setting it is also a statement about your audio: one threshold then applies at **every** utterance length. Go low (150–250ms) if your audio is conversational replies and you handle false endpoints downstream — a breath mid-sentence may then split a phrase across two finals, which concatenate to the same transcript but each decode with less context. Go high if you would rather never split a slow, deliberate speaker. If you don't set it, the adaptive default above applies — tuned for accuracy on long-form speech, at the cost of one-word replies taking ~750ms instead of ~250ms.
 
 ## Wire protocol
 
@@ -66,16 +84,20 @@ If you are not using the SDK:
 
 ```
 client →  connect with Authorization: Bearer sk-tokay-…   (or ?key=…)
-server →  {"type":"ready","model":"seta-kk-ru-v2","sample_rate":16000}
+          optionally ?end_of_utterance_ms=200
+server →  {"type":"ready","model":"seta-kk-ru-v2","sample_rate":16000,"end_of_utterance_ms":200}   ← echoed only when you set it
 client →  binary frames: PCM16-LE, mono, 16 kHz
-server →  {"type":"partial","text":"…"}
-server →  {"type":"final","text":"…","start":12.5,"end":15.8}
+server →  {"type":"partial","text":"…","audio_to":12.3}
+server →  {"type":"final","text":"…","start":12.5,"end":15.8,"audio_to":16.1}
+client →  {"type":"config","end_of_utterance_ms":200}       any time; acknowledged
 client →  {"type":"stop"}
 server →  {"type":"done","text":"…","audio_seconds":90.5,"credits_charged":543}
 server →  {"type":"error","message":"…"}
 ```
 
 An invalid or missing key is refused at the handshake with **HTTP 403**, before the socket opens.
+
+When the **server** ends the session it closes with code `1000` and a reason you can act on: `stop` (you asked), `idle` (no audio for 30s — reconnect when you have some), or `session_limit` (25 minutes — reconnect to continue). A close without one of these reasons is the network, not us.
 
 ## Cold starts
 
@@ -98,6 +120,7 @@ The difference is a cost difference, not a surcharge: see [why streaming costs m
 
 ## Limits
 
-- One socket is one call. Long calls are fine; the connection may stay open for up to an hour.
+- One socket is one call. A session may run up to **25 minutes**, then closes cleanly with reason `session_limit` — reconnect to continue.
+- A socket with **no audio for 30s** is closed with reason `idle`. Silence during a call is fine — keep sending it as frames; the timeout is for sockets nobody is feeding.
 - Audio not committed before you disconnect is still billed — the server accepted it.
 - Transcripts are lowercase and unpunctuated, as with file transcription: the model's output vocabulary contains neither. See [accuracy](/stt/accuracy).
