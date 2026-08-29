@@ -78,6 +78,8 @@ Without the SDK: `?end_of_utterance_ms=200` on the connection URL, or send `{"ty
 
 The server clamps to **100–2000ms** and echoes the value that took effect in `ready`, so you never have to assume. Setting it is also a statement about your audio: one threshold then applies at **every** utterance length. Go low (150–250ms) if your audio is conversational replies and you handle false endpoints downstream — a breath mid-sentence may then split a phrase across two finals, which concatenate to the same transcript but each decode with less context. Go high if you would rather never split a slow, deliberate speaker. If you don't set it, the adaptive default above applies — tuned for accuracy on long-form speech, at the cost of one-word replies taking ~750ms instead of ~250ms.
 
+We measured the low-threshold trade so you don't have to guess: on long-form **read** speech (FLEURS Kazakh), a uniform 200ms threshold costs about **+1.9pp WER** versus the adaptive default, entirely from mid-sentence splits. On short conversational replies the effect is negligible — a reply that fits between two breaths is a single segment either way. If your callers speak in sentences, not monologues, low thresholds are cheap; if they dictate paragraphs, keep the default.
+
 ## Wire protocol
 
 If you are not using the SDK:
