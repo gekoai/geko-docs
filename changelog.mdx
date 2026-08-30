@@ -5,6 +5,12 @@ description: "notable changes to the Geko API and SDK."
 
 The SDK follows [semantic versioning](https://semver.org). The authoritative SDK changelog lives in [`CHANGELOG.md`](https://github.com/gekoai/geko-ts-sdk/blob/main/CHANGELOG.md).
 
+## API — streaming finals: faster, and without the jitter
+
+- **Finals arrive faster, at every utterance length, with no outliers.** Decode input shapes are now drawn from a small pre-warmed set and an endpoint decode takes priority over pending partial work on the GPU, so no live request ever pays first-use kernel planning. Measured from Almaty against production at a 200 ms end-of-utterance threshold: finals went from a **539 ms median with a 1,034 ms tail** to **~420 ms with a 511 ms worst case** across 32 consecutive finals. Transcription accuracy re-measured through the full streaming path: unchanged (0.5 pp *better* on FLEURS Kazakh).
+- **Repeat connections shake hands faster.** Successful key authorization is reused for five minutes and no longer blocks other sockets on the same container; a warm reconnect measures **~0.6–0.7 s**.
+- **Cold starts restore from a GPU memory snapshot** instead of booting from scratch: the first connection after an idle period now waits **~15 s** (from ~20–25 s), and every boot — fresh or restored — re-warms its decode shapes before serving, so a just-started container has no first-request penalty.
+
 ## API — live streaming transcription
 
 - **New WebSocket endpoint** `wss://geko--seta-stream-streamer-api.modal.run/v1/stream` transcribes speech as it is spoken, emitting `partial` results while someone is still talking and `final` ones that are never revised. See [streaming](/stt/streaming).

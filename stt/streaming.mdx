@@ -46,6 +46,43 @@ stream.stop();
   Node 20 has no global `WebSocket` — it stabilised in Node 22. On Node 20 either upgrade or pass one in: `geko.stt.stream({ webSocket: (await import("ws")).WebSocket })`. The SDK itself stays dependency-free.
 </Note>
 
+## Python
+
+There is no Python SDK for streaming yet; the wire protocol is small enough to use directly with [`websockets`](https://pypi.org/project/websockets/):
+
+```python
+import asyncio, json, os
+from websockets.asyncio.client import connect  # pip install websockets
+
+URL = "wss://geko--seta-stream-streamer-api.modal.run/v1/stream?end_of_utterance_ms=200"
+
+async def main():
+    headers = {"Authorization": f"Bearer {os.environ['GEKO_API_KEY']}"}
+    async with connect(URL, additional_headers=headers,
+                       open_timeout=60, max_size=None) as ws:
+        print(json.loads(await ws.recv()))            # {"type": "ready", ...}
+
+        async def send_audio():
+            async for frame in microphone():          # yours: PCM16-LE mono 16 kHz bytes
+                await ws.send(frame)
+            await ws.send(json.dumps({"type": "stop"}))
+
+        async def read_events():
+            while True:
+                event = json.loads(await ws.recv())
+                if event["type"] == "partial":
+                    print("…", event["text"])
+                elif event["type"] == "final":
+                    print("✓", event["text"])         # append these: never revised
+                elif event["type"] in ("done", "error"):
+                    return event
+
+        _, result = await asyncio.gather(send_audio(), read_events())
+        print(result)                                  # text, audio_seconds, credits_charged
+
+asyncio.run(main())
+```
+
 ## Partials and finals
 
 Two kinds of result arrive, and the difference matters:
@@ -58,7 +95,7 @@ Two kinds of result arrive, and the difference matters:
 
 A `final` is emitted when the speaker stops — **however short the reply was**. A one-word "да" finalizes exactly like a full sentence. Committing is also what keeps the cost bounded: once a span is committed it is never re-examined, so a ten-minute call costs no more per minute than a ten-second one.
 
-**How quickly they arrive.** A new `partial` is emitted every **0.5s** of speech. A `final` fires once the speaker has been silent for the **end-of-utterance threshold**, plus roughly 50ms of decode. Set the threshold yourself (see below) and one value applies at every utterance length — at 200ms, a final lands ~250ms after the last word, one-word replies included. Leave it unset and an accuracy-first adaptive default applies: 350ms, or 700ms for replies under ~2 seconds, a split measured to leave transcription accuracy unchanged. Measured on a warm connection against 16 kHz audio fed at real time; a client that sends larger audio frames cannot receive results faster than it sends, so 250ms frames or smaller are recommended.
+**How quickly they arrive.** A new `partial` is emitted every **0.5s** of speech. A `final` fires once the speaker has been silent for the **end-of-utterance threshold**, plus roughly 50ms of decode — the decode itself is flat and jitter-free, because every input shape the model can see is pre-warmed when a container boots. Set the threshold yourself (see below) and one value applies at every utterance length: at 200ms a final leaves the server ~250ms after the last word, one-word replies included, and measured end-to-end from Kazakhstan over the public internet it lands **~0.4s** after the last word with a worst case near 0.5s. Leave it unset and an accuracy-first adaptive default applies: 350ms, or 700ms for replies under ~2 seconds, a split measured to leave transcription accuracy unchanged. Measured on a warm connection against 16 kHz audio fed at real time; a client that sends larger audio frames cannot receive results faster than it sends, so 250ms frames or smaller are recommended.
 
 Every `partial` and `final` also carries **`audio_to`** — how far into the audio you have sent the transcript has reached, in seconds. Comparing it with how much you have sent shows whether the transcript is keeping up with the speech, which lets an agent decide when it is safe to act **without waiting for the end-of-utterance call at all**.
 
@@ -103,11 +140,12 @@ When the **server** ends the session it closes with code `1000` and a reason you
 
 ## Cold starts
 
-The service scales to zero, so **the first connection after an idle period waits ~15–25 seconds** while a container boots and loads the model. Connections after that open in well under a second, and the first partial arrives about 1s in — a little behind the steady-state 0.5s cadence, because the opening moments of a stream rarely contain enough speech to decode into words yet.
+The service scales to zero, so the first connection after an idle period waits while a container comes up. That boot is a **GPU memory snapshot restore** — the model is already loaded inside the checkpoint — so it takes **~15 seconds**, and the container re-warms its decode paths before accepting the socket: the first request on a fresh container behaves exactly like the thousandth. Connections after that open in well under a second, and the first partial arrives about 1s in — a little behind the steady-state 0.5s cadence, because the opening moments of a stream rarely contain enough speech to decode into words yet.
 
-Two consequences worth designing for:
+Three consequences worth designing for:
 
 - **Set a generous handshake timeout.** Many WebSocket clients default to 10s, which is not enough to survive a cold start. The SDK defaults to 60s and exposes `openTimeout`.
+- **Don't park an idle "spare" socket to dodge the cold start.** It doesn't work — a socket with no audio is closed after 30s — and it holds GPU capacity that other calls could be using. Connect when the call starts; a warm handshake is sub-second.
 - **For a demo or a call window, ask us to pin a warm container.** It removes the cold start entirely. [Get in touch](mailto:amirlan@geko.sh).
 
 ## Pricing

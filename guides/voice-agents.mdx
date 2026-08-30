@@ -6,7 +6,7 @@ description: "both ends of a phone or assistant loop — transcribe the caller, 
 A voice agent is a loop: hear the caller, decide what to say, say it. Geko covers **both speech ends** of that loop — [speech-to-text](/stt) for the listening and [text-to-speech](/tts) for the speaking — on one API key and one balance. You bring the model in the middle.
 
 ```
-caller audio ──▶ geko.stt.transcribe ──▶ your LLM ──▶ geko.tts.stream ──▶ caller hears it
+caller audio ──▶ geko.stt.stream ──▶ your LLM ──▶ geko.tts.stream ──▶ caller hears it
 ```
 
 Both halves matter for Kazakh specifically: the caller may switch between Kazakh and Russian mid-sentence, which is exactly what `seta-kk-ru-v2` is built to transcribe without being told a language, and general-purpose ASR is not.
@@ -16,10 +16,8 @@ Both halves matter for Kazakh specifically: the caller may switch between Kazakh
 Two settings and one habit do most of the work:
 
 - **`nfe: 16`.** Half the diffusion steps of the default `32`, noticeably faster, still very usable for a conversation. Save `32` for narration you'll ship. See [latency & quality](/tts/latency).
-- **Stream, don't wait.** Use `tts.stream()` so playback starts on the first sentence instead of the full reply.
-- **Stay warm.** Both GPU services scale to zero when idle, so the first call after a lull can cold-start for tens of seconds. On a live line that's a dead pause. Keep containers hot with predictable traffic or a pre-warm call before a session — see [cold starts](/tts/latency).
-
-Transcription itself is not the bottleneck: warm, a short utterance comes back in about **0.15 s**, roughly 18× real time.
+- **Stream both directions.** Use `stt.stream()` so the transcript exists *while the caller talks* (a final lands ~0.4 s after they stop, at a 200 ms threshold), and `tts.stream()` so playback starts on the first sentence instead of the full reply.
+- **Mind the first call after a lull.** Both GPU services scale to zero when idle; a cold start is ~15 s (the streaming service restores from a GPU snapshot). Set a generous connect timeout — the SDK defaults to 60 s — and don't park idle "spare" sockets to dodge it: they're closed after 30 s of silence. For a scheduled call window, [ask us to pin a container](mailto:amirlan@geko.sh).
 
 ## Choosing a voice
 
@@ -31,21 +29,31 @@ Pick one that fits the role. `Aigerim` (warm, professional) reads well for recep
 
 ## Listening: caller audio to text
 
-Buffer a caller turn — your telephony transport decides where a turn ends, via silence detection, a barge-in signal, or an explicit end-of-turn — and hand the bytes to `stt.transcribe()`:
+Open one [stream](/stt/streaming) per call and feed it the line audio continuously — **silence included**, because the silence is how the server knows the caller stopped. Every `final` is a completed turn: end-of-utterance detection happens server-side, tuned by you, so your telephony layer does not need its own silence detector.
 
 ```ts
 import { Geko } from "@gekoai/sdk";
 
 const geko = new Geko({ apiKey: process.env.GEKO_API_KEY });
 
-async function hear(turnAudio: Buffer) {
-  const { text, audio_seconds } = await geko.stt.transcribe({
-    audio: turnAudio,
-    filename: "turn.wav", // only the extension matters — it tells the server the container
-  });
-  return { text, audio_seconds }; // text is lowercase and unpunctuated
+async function listen(callAudio: AsyncIterable<Buffer>, onTurn: (text: string) => void) {
+  // 200ms: a final ~0.4s after the caller stops. Raise it for slow, deliberate speakers.
+  const stream = await geko.stt.stream({ endOfUtteranceMs: 200 });
+
+  (async () => {
+    for await (const frame of callAudio) stream.send(frame); // PCM16-LE mono 16 kHz
+    stream.stop();
+  })();
+
+  for await (const event of stream) {
+    if (event.type === "final") onTurn(event.text); // the server decided the turn ended
+  }
 }
 ```
+
+While the caller is still talking, a `partial` arrives every half-second. Each one carries `audio_to` — how far into your audio the transcript has reached — so you can start the LLM on a stable prefix *before* the turn closes, and let the `final` merely confirm it.
+
+If your transport hands you complete recordings instead of a live line — voicemail, an uploaded file, a post-call pipeline — use [`stt.transcribe()`](/stt): it is more accurate on whole utterances and a third of the price.
 
 <Note>
   Transcripts are **lowercase and unpunctuated** — the model's output vocabulary contains neither. That is usually fine for an LLM prompt, but don't feed it somewhere that expects sentence case. See [the STT overview](/stt).
