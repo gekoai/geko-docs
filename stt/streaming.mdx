@@ -140,11 +140,27 @@ wss://…/v1/stream?context=halyk,kaspi,журавлева
 {"type":"config","context":["dx5 mix","алатау"]}     ← replaceable mid-call
 ```
 
-Up to 200 terms, applied to finals. `ready` (or the config ack) reports `context_terms`
-accepted and names any `context_skipped` — terms the model's 70-character alphabet cannot
-express, like digits ("DX5" → send "дх five"-style spellings, or the spoken form). Biasing
-is subtractive: a half-matched term earns nothing, so an irrelevant term list measurably
-does not bend transcripts (that invariant is part of our release gates).
+Up to 200 terms, applied to finals. Digit-bearing terms are expanded automatically into
+their spoken forms in both languages — send `DX5` as-is and the decoder is primed for
+"дэ икс пять" *and* "дэ икс бес". `ready` (or the config ack) reports `context_terms`
+accepted and names any `context_skipped` — terms with no expressible spoken form at all.
+Biasing is subtractive: a half-matched term earns nothing, so an irrelevant term list
+measurably does not bend transcripts (that invariant is part of our release gates).
+
+## Numbers as digits
+
+Transcripts are verbatim by default — the model spells numbers out, because that is what
+was said. If the text feeds an LLM or a CRM, ask for digits:
+
+```
+wss://…/v1/stream?numerals=digits          → "тариф за 5500 тенге в месяц"
+{"type":"config","numerals":"words"}       → switchable mid-call, acknowledged
+```
+
+Deterministic inverse normalization for Kazakh and Russian cardinals, applied to every
+emitted text (partials, finals, turns, `done`). Deliberately conservative: a lone small
+number word stays a word ("ни один клиент" never becomes "ни 1 клиент"), and the
+converter provably inverts the exact normalizers our training references use.
 
 ## Wire protocol
 
