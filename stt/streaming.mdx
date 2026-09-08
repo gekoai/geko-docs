@@ -90,12 +90,13 @@ Two kinds of result arrive, and the difference matters:
 | event | meaning |
 | --- | --- |
 | `partial` | a running guess at audio that has **not been committed yet**. It **will** be replaced by a later partial or final. Render it; never store it. |
-| `final` | a committed span of transcript, with `start` and `end` in seconds from the start of the stream. **Never revised.** Append these and you have the transcript. |
+| `final` | a committed span of transcript, with `start` and `end` in seconds from the start of the stream and a **`confidence`** in [0, 1] — the model's own posterior over the text. **Never revised.** Append these and you have the transcript; threshold the confidence for "could you repeat that?" behaviour. |
+| `end_of_turn` | **the human stopped talking.** A `final` fires at any pause; this fires only when the silence *persists* past the turn gate (default 1s), and never fires if speech resumed inside the window. It carries every final committed since the previous turn event. A voice agent should **answer on this** and render on the other two. |
 | `done` | sent after `stop`, carrying the full text, the audio duration, and the credits charged. |
 
 A `final` is emitted when the speaker stops — **however short the reply was**. A one-word "да" finalizes exactly like a full sentence. Committing is also what keeps the cost bounded: once a span is committed it is never re-examined, so a ten-minute call costs no more per minute than a ten-second one.
 
-**How quickly they arrive.** A new `partial` is emitted every **0.5s** of speech. A `final` fires once the speaker has been silent for the **end-of-utterance threshold**, plus roughly 50ms of decode — the decode itself is flat and jitter-free, because every input shape the model can see is pre-warmed when a container boots. Set the threshold yourself (see below) and one value applies at every utterance length: at 200ms a final leaves the server ~250ms after the last word, one-word replies included, and measured end-to-end from Kazakhstan over the public internet it lands **~0.4s** after the last word with a worst case near 0.5s. Leave it unset and an accuracy-first adaptive default applies: 350ms, or 700ms for replies under ~2 seconds, a split measured to leave transcription accuracy unchanged. Measured on a warm connection against 16 kHz audio fed at real time; a client that sends larger audio frames cannot receive results faster than it sends, so 250ms frames or smaller are recommended.
+**How quickly they arrive.** A new `partial` is emitted every **0.25s** of speech. A `final` fires once the speaker has been silent for the **end-of-utterance threshold**, plus roughly 50ms of decode — the decode itself is flat and jitter-free, because every input shape the model can see is pre-warmed when a container boots. Set the threshold yourself (see below) and one value applies at every utterance length: at 200ms a final leaves the server ~250ms after the last word, one-word replies included, and measured end-to-end from Kazakhstan over the public internet it lands **~0.4s** after the last word with a worst case near 0.5s. Leave it unset and an accuracy-first adaptive default applies: 350ms, or 700ms for replies under ~2 seconds, a split measured to leave transcription accuracy unchanged. Measured on a warm connection against 16 kHz audio fed at real time; a client that sends larger audio frames cannot receive results faster than it sends, so 250ms frames or smaller are recommended.
 
 Every `partial` and `final` also carries **`audio_to`** — how far into the audio you have sent the transcript has reached, in seconds. Comparing it with how much you have sent shows whether the transcript is keeping up with the speech, which lets an agent decide when it is safe to act **without waiting for the end-of-utterance call at all**.
 
@@ -117,18 +118,50 @@ The server clamps to **100–2000ms** and echoes the value that took effect in `
 
 We measured the low-threshold trade so you don't have to guess: on long-form **read** speech (FLEURS Kazakh), a uniform 200ms threshold costs about **+1.9pp WER** versus the adaptive default, entirely from mid-sentence splits. On short conversational replies the effect is negligible — a reply that fits between two breaths is a single segment either way. If your callers speak in sentences, not monologues, low thresholds are cheap; if they dictate paragraphs, keep the default.
 
+## Turns: when to answer
+
+`end_of_turn_ms` (query param, config message, or `endOfTurnMs` in the SDK) is the second
+timer, and it answers a different question from the end-of-utterance threshold. A `final`
+means "this transcript is committed" — it fires at a pause, and a pause mid-thought looks
+identical to a finished thought at that horizon. `end_of_turn` means "the human stopped":
+it fires only when the silence has **persisted** (default 1000ms, clamped 300–5000, `0`
+disables), measured from the same clock — the end of speech. If the speaker resumes
+inside the window, no event fires and the turn keeps accumulating, which is exactly the
+false-endpoint insurance an agent otherwise builds client-side. Set it to your
+answer-readiness: ~800–1200ms reads natural in conversation.
+
+## Context: tell the decoder what this call is about
+
+Pass the entities likely to occur — brands, tariff names, streets — and the decoder
+favours them when the audio is genuinely ambiguous:
+
+```
+wss://…/v1/stream?context=halyk,kaspi,журавлева
+{"type":"config","context":["dx5 mix","алатау"]}     ← replaceable mid-call
+```
+
+Up to 200 terms, applied to finals. `ready` (or the config ack) reports `context_terms`
+accepted and names any `context_skipped` — terms the model's 70-character alphabet cannot
+express, like digits ("DX5" → send "дх five"-style spellings, or the spoken form). Biasing
+is subtractive: a half-matched term earns nothing, so an irrelevant term list measurably
+does not bend transcripts (that invariant is part of our release gates).
+
 ## Wire protocol
 
 If you are not using the SDK:
 
 ```
 client →  connect with Authorization: Bearer sk-tokay-…   (or ?key=…)
-          optionally ?end_of_utterance_ms=200
-server →  {"type":"ready","model":"seta-kk-ru-v2","sample_rate":16000,"end_of_utterance_ms":200}   ← echoed only when you set it
+          optionally ?end_of_utterance_ms=200&end_of_turn_ms=1000&context=halyk,kaspi
+server →  {"type":"ready","model":"seta-kk-ru-v2","sample_rate":16000,
+           "end_of_utterance_ms":200,          ← echoed only when you set it
+           "end_of_turn_ms":1000,              ← always announced; 0 = disabled
+           "context_terms":2}                  ← plus context_skipped when relevant
 client →  binary frames: PCM16-LE, mono, 16 kHz
 server →  {"type":"partial","text":"…","audio_to":12.3}
-server →  {"type":"final","text":"…","start":12.5,"end":15.8,"audio_to":16.1}
-client →  {"type":"config","end_of_utterance_ms":200}       any time; acknowledged
+server →  {"type":"final","text":"…","start":12.5,"end":15.8,"audio_to":16.1,"confidence":0.94}
+server →  {"type":"end_of_turn","text":"…","start":12.5,"end":15.8,"audio_to":16.9}
+client →  {"type":"config","end_of_utterance_ms":200,"end_of_turn_ms":800,"context":["…"]}
 client →  {"type":"stop"}
 server →  {"type":"done","text":"…","audio_seconds":90.5,"credits_charged":543}
 server →  {"type":"error","message":"…"}
