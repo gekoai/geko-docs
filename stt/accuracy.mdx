@@ -20,20 +20,25 @@ WER is computed **corpus-level** (total errors ÷ total reference words), not as
 
 ## versus Whisper large-v3
 
-Identical audio, same harness:
+Same audio, same normaliser, same corpus-level scorer. Clip counts are per cell, because
+on KSC2 they differ and a comparison that hides that is not one:
 
 | test set | **seta** | Whisper large-v3 | better by |
 | --- | --- | --- | --- |
-| FLEURS kk, clean | **8.39%** | 37.20% | −77% |
-| FLEURS kk, telephony | **8.87%** | 41.79% | −79% |
-| KSC2, clean | **8.71%** | 44.95% | −81% |
-| KSC2, telephony | **9.41%** | 49.36% | −81% |
+| FLEURS kk, clean | **8.39%** (842) | 37.20% (842) | −77% |
+| FLEURS kk, telephony | **8.87%** (842) | 41.79% (842) | −79% |
+| KSC2, clean | **8.71%** (6,733) | 44.95% (1,200) | −81% |
+| KSC2, telephony | **9.41%** (6,733) | 49.36% (1,200) | −81% |
 
 Whisper also degrades *worse* under telephony conditions (+12.3% relative, against our +5.7%). **Our telephony number beats Whisper's clean number by 4.4×.**
 
-<Note>
-  The KSC2 rows for Whisper use a 1,200-clip subset for cost control. At a 5× gap, that makes no material difference.
-</Note>
+<Warning>
+  The two FLEURS rows are clip-for-clip. **The KSC2 rows are not:** Whisper ran on a
+  1,200-clip subset to bound API cost, against our full 6,733. A sample that size puts
+  roughly ±1 point of sampling error on Whisper's number, which does not reach a gap this
+  wide — but it makes those rows "same corpus, different sample" rather than "identical
+  audio", and we would rather say it than have you find it. The full-set run is queued.
+</Warning>
 
 ## versus ISSAI (published)
 
